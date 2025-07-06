@@ -52,6 +52,7 @@ void* smalloc(size_t size){
     }
     size_t actual_start = (size_t)start;
     actual_start += (2*BYTES_IN_ARCHITECTURE);
+    //TODO: add the metadata
 
     return start;
 }
