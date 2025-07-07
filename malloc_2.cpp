@@ -25,14 +25,20 @@ inline void markAllocated(payload_start block);
 inline size_t getBlockSize(payload_start block);
 inline bool isAllocated(payload_start block);
 inline bool isFree(payload_start block);
+inline payload_start _initBlock_MetaData(actual_block_start block, size_t actual_block_size);
+inline payload_start initAllocatedBlock(actual_block_start block, size_t actual_block_size);
+inline payload_start initFreeBlock(actual_block_start block, size_t actual_block_size);
 
-/* memory management meta data struct*/
+/* memory management meta data struct */
 struct MallocMetadata {
  size_t size;
  bool is_free;
 MallocMetadata* next;
  MallocMetadata* prev;
 };
+
+#define ESER_BECHEZKAT_SHMONE (100000000)
+#define BLOCK_BUFFER_SIZE ((sizeof(MallocMetadata)))
 
 
 payload_start smalloc(size_t size){
@@ -44,16 +50,29 @@ i. Success – returns pointer to the first byte in the allocated block (excludi
 course)
 ii. Failure –
 a. If size is 0 returns NULL.
-b. If ‘size’ is more than 108, return NULL.
+b. If ‘size’ is more than 10**8, return NULL.
 c. If sbrk fails in allocating the needed space, return NULL. 
     */
-   payload_start return_pointer = smalloc_helper_find_avalible(size);
-
-   if (return_pointer != nullptr){
-    return return_pointer;
+   if (size <= 0 || size > ESER_BECHEZKAT_SHMONE){
+    return nullptr;
    }
+
+   payload_start look_for_avalible = smalloc_helper_find_avalible(size);
+
+   if (look_for_avalible != nullptr){
+    markAllocated(look_for_avalible);
+    return look_for_avalible;
+   }
+
+   size_t temp_size = size+BLOCK_BUFFER_SIZE;
+   actual_block_start temp = actually_allocate(temp_size);
+   payload_start new_allocation = initAllocatedBlock(temp,temp_size);
+   return new_allocation;
+
 }
+
 payload_start smalloc_helper_find_avalible(size_t size){}
+
 actual_block_start actually_allocate(size_t size){}
 
 void* scalloc(size_t num, size_t size){
@@ -154,5 +173,19 @@ inline void markFree(payload_start block){
 }
 
 inline size_t getBlockSize(payload_start block){
+    //TODO: 
+}
+
+inline payload_start _initBlock_MetaData(actual_block_start block, size_t actual_block_size){
+    //TODO: 
+}
+
+inline payload_start initAllocatedBlock(actual_block_start block, size_t actual_block_size){
+    payload_start temp = _initBlock_MetaData(block, actual_block_size);
+    markAllocated(temp);
+    return temp;
+}
+
+inline payload_start initFreeBlock(actual_block_start block, size_t actual_block_size){
     //TODO: 
 }
