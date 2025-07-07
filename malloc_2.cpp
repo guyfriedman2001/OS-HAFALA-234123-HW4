@@ -1,4 +1,5 @@
 typedef unsigned long size_t; //FIXME: delete this line! its only for my mac
+void* sbrk(size_t size); //FIXME: delete this line! its only for my mac
 
 #include <cassert>
 
@@ -284,7 +285,7 @@ inline payload_start _initBlock_MetaData(actual_block_start block, size_t actual
 }
 
 inline payload_start initAllocatedBlock(actual_block_start block, size_t actual_block_size){
-    payload_start temp = initFreeBlock(block, actual_block_size);
+    payload_start temp = initFreeBlock(block, actual_block_size); // <- initFreeBlock initialises the linked list
     markAllocated(temp); // <- mark allocated removes from linked list, make sure linked list is initialised.
     return temp;
 }
