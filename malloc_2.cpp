@@ -104,6 +104,7 @@ void* scalloc(size_t num, size_t size){
    if (allocated_block == nullptr){
     return nullptr;
    }
+   //FIXME: USE MMSET!!!
    for (size_t i = 0; i < actual_size; ++i){
     ((char*)allocated_block)[i] = 0;
    }
