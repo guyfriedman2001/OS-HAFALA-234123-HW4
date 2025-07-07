@@ -119,7 +119,7 @@ void sfree(void* p){
    markFree(p); // <- markFree also handles metadata operations.
 }
 
-void* srealloc(payload_start oldp, size_t size){
+payload_start srealloc(payload_start oldp, size_t size){
     /*
     ● If ‘size’ is smaller than or equal to the current block’s size, reuses the same block.
       Otherwise, finds/allocates ‘size’ bytes for a new space, copies content of oldp into the
