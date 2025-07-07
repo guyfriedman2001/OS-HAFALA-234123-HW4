@@ -203,7 +203,7 @@ payload_start smalloc_helper_find_avalible(size_t size){
 }
 
 actual_block_start actually_allocate(size_t size){ //literally copy paste of the previous part.
-        if (size <= 0 || size > 100000000){
+        if (size <= 0 || size > ESER_BECHEZKAT_SHMONE){
         return nullptr;
     }
 
