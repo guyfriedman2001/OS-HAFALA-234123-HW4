@@ -32,6 +32,7 @@ inline void markAllocated(payload_start block);
 inline size_t getBlockSize(payload_start block);
 inline bool isAllocated(payload_start block);
 inline bool isFree(payload_start block);
+inline bool isSizeValid(size_t size);
 inline payload_start _initBlock_MetaData(actual_block_start block, size_t actual_block_size);
 inline payload_start initAllocatedBlock(actual_block_start block, size_t actual_block_size);
 inline payload_start initFreeBlock(actual_block_start block, size_t actual_block_size);
@@ -70,7 +71,7 @@ a. If size is 0 returns NULL.
 b. If ‘size’ is more than 10**8, return NULL.
 c. If sbrk fails in allocating the needed space, return NULL. 
     */
-   if (size <= 0 || size > ESER_BECHEZKAT_SHMONE){
+   if (!isSizeValid(size)){
     return nullptr;
    }
 
@@ -81,7 +82,7 @@ c. If sbrk fails in allocating the needed space, return NULL.
     return look_for_avalible;
    }
 
-   size_t temp_size = size+BLOCK_BUFFER_SIZE;
+   size_t temp_size = size + BLOCK_BUFFER_SIZE;
    actual_block_start temp = actually_allocate(temp_size);
    payload_start new_allocation = initAllocatedBlock(temp,temp_size);
    return new_allocation;
@@ -135,9 +136,9 @@ payload_start srealloc(payload_start oldp, size_t size){
         c. If sbrk fails in allocating the needed space, return NULL.
         d. Do not free ‘oldp’ if srealloc() fails.
     */
-    if (size <= 0 || size > ESER_BECHEZKAT_SHMONE){
-        return nullptr;
-    }
+    if (!isSizeValid(size)){
+    return nullptr;
+   }
     if (oldp == nullptr){
         return smalloc(size);
     }
@@ -249,6 +250,10 @@ inline bool isAllocated(payload_start block){
 inline bool isFree(payload_start block){
     MallocMetadata* blocks_metadata_manager = getMallocStruct(block);
     return blocks_metadata_manager->is_free;
+}
+
+inline bool isSizeValid(size_t size){
+    return (size > 0 && size <= ESER_BECHEZKAT_SHMONE);
 }
 
 
