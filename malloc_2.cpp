@@ -21,6 +21,18 @@ size_t _size_meta_data();
 payload_start smalloc_helper_find_avalible(size_t size);
 actual_block_start actually_allocate(size_t size);
 inline void markFree(payload_start block);
+inline void markAllocated(payload_start block);
+inline size_t getBlockSize(payload_start block);
+inline bool isAllocated(payload_start block);
+inline bool isFree(payload_start block);
+
+/* memory management meta data struct*/
+struct MallocMetadata {
+ size_t size;
+ bool is_free;
+MallocMetadata* next;
+ MallocMetadata* prev;
+};
 
 
 payload_start smalloc(size_t size){
@@ -121,97 +133,26 @@ size_t _size_meta_data(){
 }
 
 
-enum MemoryStatus {
-    FREE = 0,
-    ALLOCATED = 1
-};
 
-typedef unsigned long size_t; //FIXME: delete this line! its only for my mac
 
-inline bool _isFlag(void* block, MemoryStatus flag){
-    if (!block){
-        //make it safe to call on nullptr, similar behaviour to dev/null
-        //as per the tutorials or lectures or whatever
-        return true;
-    }
-    //go 2 'objects' below the pointer
-    void* address_2_below = (block-2*ARCH_SIZE);
-
-    size_t value_at_addres_2_below = *((size_t*)address_2_below);
-    
-
-    //check if last bit is 1 or 0
-    return ((value_at_addres_2_below&flag)==flag);
+inline bool isAllocated(payload_start block){
+    //TODO: 
 }
 
-inline bool isAllocated(void* block){
-    return _isFlag(block, ALLOCATED);
+inline bool isFree(payload_start block){
+    return !(isAllocated(block));
 }
 
-#if 0 // i dont think we need this function
-inline bool isFree(void* block){
-    return _isFlag(block, FREE);
-}
-#endif
 
-#if 0 //didnt find a good way to do it
-inline void _apply_to_flag(void* block, MemoryStatus flag){
-        if (!block){
-        //make it safe to call on nullptr, similar behaviour to dev/null
-        //as per the tutorials or lectures or whatever
-        return;
-    }
 
-    //go 2 'objects' below the pointer
-    size_t* address_2_below = (size_t*) (block-2*ARCH_SIZE);
-
-    ((*address_2_below)&=flag)|=flag;
-}
-#endif
-
-inline void markAllocated(void* block){
-    if (!block){
-        //make it safe to call on nullptr, similar behaviour to dev/null
-        //as per the tutorials or lectures or whatever
-        return;
-    }
-
-    //go 2 'objects' below the pointer
-    size_t* address_2_below = (size_t*) (block-2*ARCH_SIZE);
-
-    (*address_2_below)|=ALLOCATED;
+inline void markAllocated(payload_start block){
+    //TODO: 
 }
 
-inline void markFree(void* block){
-    if (!block){
-        //make it safe to call on nullptr, similar behaviour to dev/null
-        //as per the tutorials or lectures or whatever
-        return;
-    }
-
-    //go 2 'objects' below the pointer
-    size_t* address_2_below = (size_t*) (block-2*ARCH_SIZE);
-
-    //easiest way i found to make the first bit 0 without using a predefined register size,
-    //just make sure the first bit is 1 and then xor it with 1.
-    ((*address_2_below)|=ALLOCATED)^=ALLOCATED;
+inline void markFree(payload_start block){
+    //TODO: 
 }
 
-inline size_t getBlockSize(void* block){
-    if (!block){
-        //make it safe to call on nullptr, similar behaviour to dev/null
-        //as per the tutorials or lectures or whatever
-        return 0;
-    }
-
-    //go 2 'objects' below the pointer
-    size_t* address_2_below = (size_t*) (block-2*ARCH_SIZE);
-
-    size_t size = *address_2_below;
-
-    //easiest way i found to make the first bit 0 without using a predefined register size,
-    //just make sure the first bit is 1 and then xor it with 1.
-    ((size)|=ALLOCATED)^=ALLOCATED;
-
-    return size;
+inline size_t getBlockSize(payload_start block){
+    //TODO: 
 }
