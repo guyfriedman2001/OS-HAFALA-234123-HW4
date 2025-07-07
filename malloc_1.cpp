@@ -1,5 +1,8 @@
 #define SYSCALL_FAILED(POINTER) (((long int) POINTER) == -1)
 
+#include <unistd.h>
+#include <cstddef>
+
 /**
 ● Tries to allocate ‘size’ bytes.
 ● Return value:
@@ -35,5 +38,4 @@ void* smalloc(size_t size){
     }
 
     return meta_block_start;
-
 }
