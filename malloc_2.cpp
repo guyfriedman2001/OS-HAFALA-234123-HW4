@@ -1,8 +1,10 @@
 typedef unsigned long size_t; //FIXME: delete this line! its only for my mac
 
+/* typedef for clarity */
 typedef void* payload_start;
 typedef void* actual_block_start;
 
+/* functions from the hw */
 payload_start smalloc(size_t size);
 payload_start scalloc(size_t num, size_t size);
 void sfree(payload_start p);
@@ -14,6 +16,8 @@ size_t _num_allocated_bytes();
 size_t _num_meta_data_bytes();
 size_t _size_meta_data();
 
+
+/* our helper functions */
 payload_start smalloc_helper_find_avalible(size_t size);
 actual_block_start actually_allocate(size_t size);
 inline void markFree(payload_start block);
