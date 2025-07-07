@@ -240,6 +240,10 @@ inline void markAllocated(payload_start block){
     // IMPORTANT: regards pointers in doubly linked list as valid data (no null and no garbage)
     MallocMetadata* blocks_metadata_manager = getMallocStruct(block);
 
+    assert(blocks_metadata_manager->next != nullptr);
+    assert(blocks_metadata_manager->prev != nullptr);
+    assert(blocks_metadata_manager->is_free); // <- might be redundant
+
     //update flag
     blocks_metadata_manager->is_free = false;
 
