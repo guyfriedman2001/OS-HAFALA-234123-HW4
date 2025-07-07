@@ -11,6 +11,8 @@ enum MemoryStatus {
 };
 
 typedef unsigned long size_t; //FIXME: delete this line! its only for my mac
+void* sbrk(size_t size); //FIXME: delete this line! its only for my mac
+
 
 inline bool _isFlag(void* block, MemoryStatus flag){
     if (!block){
