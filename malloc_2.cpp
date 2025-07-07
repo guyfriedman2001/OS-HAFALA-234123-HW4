@@ -38,7 +38,7 @@ size_t _size_meta_meta_data();
 inline MallocMetadata* getGlobalMallocStructHead();
 inline MallocMetadata* getNextMallocBlock(MallocMetadata* current_block);
 inline MallocMetadata* getGlobalMallocStructTail();
-inline payload_start getStructPayload(MallocMetadata* malloc_of_block);
+inline payload_start getStructsPayload(MallocMetadata* malloc_of_block);
 
 
 
@@ -121,17 +121,17 @@ void sfree(void* p){
 void* srealloc(payload_start oldp, size_t size){
     /*
     ● If ‘size’ is smaller than or equal to the current block’s size, reuses the same block.
-Otherwise, finds/allocates ‘size’ bytes for a new space, copies content of oldp into the
-new allocated space and frees the oldp.
-● Return value:
-i. Success –
-a. Returns pointer to the first byte in the (newly) allocated space.
-b. If ‘oldp’ is NULL, allocates space for ‘size’ bytes and returns a pointer to it.
-ii. Failure –
-a. If size is 0 returns NULL.
-b. If ‘size’ if more than 10**8, return NULL.
-c. If sbrk fails in allocating the needed space, return NULL.
-d. Do not free ‘oldp’ if srealloc() fails. 
+      Otherwise, finds/allocates ‘size’ bytes for a new space, copies content of oldp into the
+      new allocated space and frees the oldp.
+    ● Return value:
+        i. Success –
+        a. Returns pointer to the first byte in the (newly) allocated space.
+        b. If ‘oldp’ is NULL, allocates space for ‘size’ bytes and returns a pointer to it.
+        ii. Failure –
+        a. If size is 0 returns NULL.
+        b. If ‘size’ if more than 10**8, return NULL.
+        c. If sbrk fails in allocating the needed space, return NULL.
+        d. Do not free ‘oldp’ if srealloc() fails. 
     */
    //TODO:
 }
@@ -195,7 +195,7 @@ payload_start smalloc_helper_find_avalible(size_t size){
     MallocMetadata* global_tail = getGlobalMallocStructTail();
     for (MallocMetadata* temp = getNextMallocBlock(global_head); temp != global_tail; temp = getNextMallocBlock(temp)){
         if(temp->size >= size){
-            return getStructPayload(temp);
+            return getStructsPayload(temp);
         }
     }
     return nullptr;
@@ -313,6 +313,6 @@ inline MallocMetadata* getGlobalMallocStructTail(){
     //TODO: return the tail deme (יעני זנב דמה) of our global doubly linked list of free blocks
 }
 
-inline payload_start getStructPayload(MallocMetadata* malloc_of_block){
+inline payload_start getStructsPayload(MallocMetadata* malloc_of_block){
     //TODO: return payload pointer of the block managed by the struct
 }
