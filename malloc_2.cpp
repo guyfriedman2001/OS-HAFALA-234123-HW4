@@ -2,6 +2,7 @@ typedef unsigned long size_t; //FIXME: delete this line! its only for my mac
 void* sbrk(size_t size); //FIXME: delete this line! its only for my mac
 
 #include <cassert>
+#include <string.h>
 
 /* typedef for clarity */
 typedef void* payload_start;
@@ -14,7 +15,7 @@ struct MallocMetadata;
 payload_start smalloc(size_t size);
 payload_start scalloc(size_t num, size_t size);
 void sfree(payload_start p);
-payload_start srealloc(void* oldp, size_t size); // <- TODO:
+payload_start srealloc(void* oldp, size_t size);
 size_t _num_free_blocks(); // <- TODO:
 size_t _num_free_bytes(); // <- TODO:
 size_t _num_allocated_blocks(); // <- TODO:
@@ -132,9 +133,26 @@ payload_start srealloc(payload_start oldp, size_t size){
         a. If size is 0 returns NULL.
         b. If ‘size’ if more than 10**8, return NULL.
         c. If sbrk fails in allocating the needed space, return NULL.
-        d. Do not free ‘oldp’ if srealloc() fails. 
+        d. Do not free ‘oldp’ if srealloc() fails.
     */
-   //TODO:
+    if (size <= 0 || size > ESER_BECHEZKAT_SHMONE){
+        return nullptr;
+    }
+    if (oldp == nullptr){
+        return smalloc(size);
+    }
+    MallocMetadata* oldp_metadata = getMallocStruct(oldp);
+    size_t oldp_size = oldp_metadata->size;
+    if (oldp_size >= size){
+        return oldp;
+    }
+    payload_start new_block = smalloc(size);
+    if (new_block == nullptr){
+        return nullptr;
+    }
+    memmove(new_block,oldp,oldp_size);
+    sfree(oldp);
+    return new_block;
 }
 
 size_t _num_free_blocks(){
@@ -203,7 +221,7 @@ payload_start smalloc_helper_find_avalible(size_t size){
 }
 
 actual_block_start actually_allocate(size_t size){ //literally copy paste of the previous part.
-        if (size <= 0 || size > ESER_BECHEZKAT_SHMONE){
+    if (size <= 0 || size > ESER_BECHEZKAT_SHMONE){
         return nullptr;
     }
 
