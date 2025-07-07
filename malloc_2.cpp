@@ -13,11 +13,11 @@ struct MallocMetadata;
 payload_start smalloc(size_t size);
 payload_start scalloc(size_t num, size_t size);
 void sfree(payload_start p);
-payload_start srealloc(void* oldp, size_t size);
-size_t _num_free_blocks();
-size_t _num_free_bytes();
-size_t _num_allocated_blocks();
-size_t _num_allocated_bytes();
+payload_start srealloc(void* oldp, size_t size); // <- TODO:
+size_t _num_free_blocks(); // <- TODO:
+size_t _num_free_bytes(); // <- TODO:
+size_t _num_allocated_blocks(); // <- TODO:
+size_t _num_allocated_bytes(); // <- TODO:
 size_t _num_meta_data_bytes();
 size_t _size_meta_data();
 
@@ -30,15 +30,15 @@ inline void markAllocated(payload_start block);
 inline size_t getBlockSize(payload_start block);
 inline bool isAllocated(payload_start block);
 inline bool isFree(payload_start block);
-inline payload_start _initBlock_MetaData(actual_block_start block, size_t actual_block_size);
+inline payload_start _initBlock_MetaData(actual_block_start block, size_t actual_block_size); // <- TODO:
 inline payload_start initAllocatedBlock(actual_block_start block, size_t actual_block_size);
 inline payload_start initFreeBlock(actual_block_start block, size_t actual_block_size);
-inline MallocMetadata* getMallocStruct(payload_start block);
-size_t _size_meta_meta_data();
-inline MallocMetadata* getGlobalMallocStructHead();
+inline MallocMetadata* getMallocStruct(payload_start block); // <- TODO:
+size_t _size_meta_meta_data(); // <- TODO:
+inline MallocMetadata* getGlobalMallocStructHead(); // <- TODO:
 inline MallocMetadata* getNextMallocBlock(MallocMetadata* current_block);
-inline MallocMetadata* getGlobalMallocStructTail();
-inline payload_start getStructsPayload(MallocMetadata* malloc_of_block);
+inline MallocMetadata* getGlobalMallocStructTail(); // <- TODO:
+inline payload_start getStructsPayload(MallocMetadata* malloc_of_block); // <- TODO:
 
 
 
