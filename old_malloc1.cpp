@@ -104,12 +104,12 @@ inline size_t getBlockSize(void* block){
 
 
 /**
-● Tries to allocate ‘size’ bytes.
+● Tries to allocate ‘payload_size’ bytes.
 ● Return value:
 i. Success –a pointer to the first allocated byte within the allocated block.
  ii. Failure –
-    a. If ‘size’ is 0 returns NULL.
-    b. If ‘size’ is more than 10**8, return NULL.
+    a. If ‘payload_size’ is 0 returns NULL.
+    b. If ‘payload_size’ is more than 10**8, return NULL.
     c. If sbrk fails, return NULL.  
 
 Notes:
@@ -120,7 +120,7 @@ Notes:
     Discussion: Before proceeding, try discussing the current implementation with your partner. What’s
     wrong with it? What’s missing? Are we handling fragmentation? What would you do differently?
 */
-void* smalloc(size_t size){
+void* smalloc(size_t payload_size){
     /**
     Heap Overview:
 
@@ -135,7 +135,7 @@ void* smalloc(size_t size){
               | <- returned *ptr (actual start of free space)
     prev avalible block (long)
               |
-        block size (long) //(last bit of size would be the flag for malloced/ free, as per the ATAM lecture) (1 = allocated, 0 = free)
+        block size (long) //(last bit of payload_size would be the flag for malloced/ free, as per the ATAM lecture) (1 = allocated, 0 = free)
       XX--other data--XX
 
      */
