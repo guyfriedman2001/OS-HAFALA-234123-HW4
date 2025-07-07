@@ -39,6 +39,8 @@ MallocMetadata* next;
 
 #define ESER_BECHEZKAT_SHMONE (100000000)
 #define BLOCK_BUFFER_SIZE ((sizeof(MallocMetadata)))
+#define SYSCALL_FAILED(POINTER) (((long int) POINTER) == -1)
+
 
 
 payload_start smalloc(size_t size){
@@ -73,7 +75,25 @@ c. If sbrk fails in allocating the needed space, return NULL.
 
 payload_start smalloc_helper_find_avalible(size_t size){}
 
-actual_block_start actually_allocate(size_t size){}
+actual_block_start actually_allocate(size_t size){ //literally copy paste of the previous part.
+        if (size <= 0 || size > 100000000){
+        return nullptr;
+    }
+
+    void* meta_block_start = sbrk(0);
+
+    if (SYSCALL_FAILED(meta_block_start)){
+        return nullptr;
+    }
+
+    void* one_after_meta_block_end = sbrk(size);
+
+    if (SYSCALL_FAILED(one_after_meta_block_end)){
+        return nullptr;
+    }
+
+    return meta_block_start;
+}
 
 void* scalloc(size_t num, size_t size){
     /*
