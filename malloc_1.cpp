@@ -2,7 +2,7 @@
 //#define BYTES_IN_ARCHITECTURE (4) //4 if we are in a 32 bit machine, if in 64 bit then it should be 8
 #define EXTRA_DATA_AMMOUNT (4) //ammount of actual variables we would need to allocate
 
-#define ARCH_SIZE (sizeof(void*)) //getting tired of writing this everywhere, made a define for easier use
+#define ARCH_SIZE (sizeof(void*)) //getting tired of writing sizeof(void*) everywhere, made a define for easier use
 
 
 enum MemoryStatus {
@@ -19,7 +19,7 @@ inline bool _isFlag(void* block, MemoryStatus flag){
         return true;
     }
     //go 2 'objects' below the pointer
-    void* address_2_below = (block-2*sizeof(size_t));
+    void* address_2_below = (block-2*ARCH_SIZE);
 
     size_t value_at_addres_2_below = *((size_t*)address_2_below);
     
@@ -47,7 +47,7 @@ inline void _apply_to_flag(void* block, MemoryStatus flag){
     }
 
     //go 2 'objects' below the pointer
-    size_t* address_2_below = (size_t*) (block-2*sizeof(size_t));
+    size_t* address_2_below = (size_t*) (block-2*ARCH_SIZE);
 
     ((*address_2_below)&=flag)|=flag;
 }
@@ -61,7 +61,7 @@ inline void markAllocated(void* block){
     }
 
     //go 2 'objects' below the pointer
-    size_t* address_2_below = (size_t*) (block-2*sizeof(size_t));
+    size_t* address_2_below = (size_t*) (block-2*ARCH_SIZE);
 
     (*address_2_below)|=ALLOCATED;
 }
@@ -74,7 +74,7 @@ inline void markFree(void* block){
     }
 
     //go 2 'objects' below the pointer
-    size_t* address_2_below = (size_t*) (block-2*sizeof(size_t));
+    size_t* address_2_below = (size_t*) (block-2*ARCH_SIZE);
 
     //easiest way i found to make the first bit 0 without using a predefined register size,
     //just make sure the first bit is 1 and then xor it with 1.
@@ -89,7 +89,7 @@ inline size_t getBlockSize(void* block){
     }
 
     //go 2 'objects' below the pointer
-    size_t* address_2_below = (size_t*) (block-2*sizeof(size_t));
+    size_t* address_2_below = (size_t*) (block-2*ARCH_SIZE);
 
     size_t size = *address_2_below;
 
