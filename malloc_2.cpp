@@ -18,8 +18,8 @@ void sfree(payload_start p);
 payload_start srealloc(void *oldp, size_t payload_size);
 size_t _num_free_blocks();
 size_t _num_free_bytes();
-size_t _num_allocated_blocks(); // <- TODO:
-size_t _num_allocated_bytes();  // <- TODO:
+size_t _num_allocated_blocks();
+size_t _num_allocated_bytes(); 
 size_t _num_meta_data_bytes();
 size_t _size_meta_data();
 
@@ -37,7 +37,7 @@ inline payload_start _initBlock_MetaData(actual_block_start block, size_t actual
 inline payload_start initAllocatedBlock(actual_block_start block, size_t actual_block_size);
 inline payload_start initFreeBlock(actual_block_start block, size_t actual_block_size);
 inline MallocMetadata *getMallocStruct(payload_start block);
-size_t _size_meta_meta_data();                          // <- TODO:
+size_t _size_meta_meta_data();                          // <- TODO: Guy S: didnt really understood this function
 inline MallocMetadata *getGlobalMallocStructHeadFree(); 
 inline MallocMetadata *getNextMallocBlock(MallocMetadata *current_block);
 inline MallocMetadata *getGlobalMallocStructTailFree(); 
@@ -55,6 +55,8 @@ struct MallocMetadata
 static MallocMetadata head_dummy = {0, true, nullptr, nullptr};
 static MallocMetadata tail_dummy = {0, true, nullptr, nullptr};
 static bool is_list_initialized = false;
+static size_t num_allocated_blocks = 0;
+static size_t num_allocated_bytes = 0;
 
 #define ESER_BECHEZKAT_SHMONE (100000000)
 #define BLOCK_BUFFER_SIZE ((sizeof(MallocMetadata)))
@@ -89,6 +91,8 @@ c. If sbrk fails in allocating the needed space, return NULL.
     size_t temp_size = payload_size + BLOCK_BUFFER_SIZE;
     actual_block_start temp = actually_allocate(temp_size);
     payload_start new_allocation = initAllocatedBlock(temp, temp_size);
+    num_allocated_blocks++;
+    num_allocated_bytes += payload_size;
     return new_allocation;
 }
 
@@ -148,7 +152,13 @@ payload_start srealloc(payload_start oldp, size_t payload_size)
     }
     if (oldp == nullptr)
     {
-        return smalloc(payload_size);
+        payload_start temp = smalloc(payload_size);
+        if (temp != nullptr)
+        {
+            num_allocated_blocks++;
+            num_allocated_bytes += payload_size;
+        }
+        return temp;
     }
     MallocMetadata *oldp_metadata = getMallocStruct(oldp);
     size_t oldp_size = oldp_metadata->payload_size;
@@ -208,7 +218,7 @@ size_t _num_allocated_blocks()
     /*
     ● Returns the overall (free and used) number of allocated blocks in the heap.
     */
-    // TODO:
+    return num_allocated_blocks;
 }
 
 size_t _num_allocated_bytes()
@@ -217,7 +227,7 @@ size_t _num_allocated_bytes()
     ● Returns the overall number (free and used) of allocated bytes in the heap, excluding
       the bytes used by the meta-data structs.
     */
-    // TODO:
+    return num_allocated_bytes;
 }
 
 size_t _num_meta_data_bytes()
