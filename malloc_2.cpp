@@ -4,6 +4,8 @@
 
 #define ARCH_SIZE (sizeof(void*)) //getting tired of writing sizeof(void*) everywhere, made a define for easier use
 
+#include <unistd.h>
+#include <cstddef>
 
 enum MemoryStatus {
     FREE = 0,
