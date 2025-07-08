@@ -42,6 +42,8 @@ inline MallocMetadata *getGlobalMallocStructHeadFree();
 inline MallocMetadata *getNextMallocBlock(MallocMetadata *current_block);
 inline MallocMetadata *getGlobalMallocStructTailFree(); 
 inline payload_start getStructsPayload(MallocMetadata *malloc_of_block);
+inline void _placeBlockInFreeList(MallocMetadata *malloc_manager_of_block);
+inline MallocMetadata* _firstBlockAfter(MallocMetadata *malloc_manager_of_block);
 
 /* memory management meta data struct */
 struct MallocMetadata
@@ -251,7 +253,7 @@ size_t _size_meta_data()
 }
 
 size_t _size_meta_meta_data()
-{   // <- TODO: ask in the piazza if this is needed
+{   // <- TODO: ask in the piazza if this is needed, if not simply return 0
     /*
     ● Returns the number of bytes of a meta-data in your system that are not related to the blocks.
     */
@@ -353,21 +355,14 @@ inline void markFree(payload_start block)
 {
     // mark bool as free, add to doubly linked list, regard previous pointers in the block meta data as garbage.
     //  IMPORTANT: NO DOUBLE FREE CALLS!
-    MallocMetadata *global_head = getGlobalMallocStructHeadFree();
     MallocMetadata *blocks_metadata_manager = getMallocStruct(block);
 
     assert(isAllocated(block)); // <- NO DOUBLE FREE! thats why _initBlock_MetaData needs to initialise MallocMetadata->is_free = false.
 
-    // adjust new blocks pointers
-    blocks_metadata_manager->next = global_head->next;
-    blocks_metadata_manager->prev = global_head;
-
-    // truncate old pointers
-    global_head->next->prev = blocks_metadata_manager;
-    global_head->next = blocks_metadata_manager;
-
     // mark free
     blocks_metadata_manager->is_free = true;
+
+    _placeBlockInFreeList(blocks_metadata_manager); // <- expects a free block!
 }
 
 inline size_t getBlockSize(payload_start block)
@@ -436,3 +431,46 @@ inline payload_start getStructsPayload(MallocMetadata *malloc_of_block)
     payload_start tmp_payload_start = (payload_start)temp;
     return tmp_payload_start;
 }
+
+inline void _placeBlockInFreeList(MallocMetadata *malloc_manager_of_block){
+    assert((malloc_manager_of_block!=nullptr) && "in function '_placeBlockInFreeList': recieved nullptr as \"(MallocMetadata *malloc_manager_of_block\" argument.");
+
+    // add to doubly linked list, regard previous pointers in the block meta data as garbage.
+    MallocMetadata *global_head = getGlobalMallocStructHeadFree();
+    MallocMetadata *blocks_metadata_manager = getMallocStruct(malloc_manager_of_block);
+
+    // make sure block was marked as free
+    assert(malloc_manager_of_block->is_free && "in function '_placeBlockInFreeList': block was not marked as free before insertion attempt into the free linked list.");
+
+    // find the block that would be after the current block in the free linked list
+    MallocMetadata* firstBlockAfter = _firstBlockAfter(malloc_manager_of_block);
+    assert((firstBlockAfter!=nullptr) && "in function '_placeBlockInFreeList': block after was returned as nullptr.");
+
+    // adjust new blocks pointers
+    malloc_manager_of_block->next = firstBlockAfter;
+    malloc_manager_of_block->prev = firstBlockAfter->prev;
+
+    // truncate (update) old pointers
+    firstBlockAfter->prev = malloc_manager_of_block;
+    malloc_manager_of_block->prev->next = malloc_manager_of_block;
+}
+
+inline MallocMetadata* _firstBlockAfter(MallocMetadata *malloc_manager_of_block){
+    assert((malloc_manager_of_block!=nullptr) && "in function '_firstBlockAfter': recieved nullptr as \"(MallocMetadata *malloc_manager_of_block\" argument.");
+
+    MallocMetadata *global_head = getGlobalMallocStructHeadFree();
+    MallocMetadata *global_tail = getGlobalMallocStructTailFree();
+    MallocMetadata *temp;
+
+    // find the first block (after head and before tail) with a higher addres than current adress, if there isnt then return tail.
+    for (temp = getNextMallocBlock(global_head); temp != global_tail; temp = getNextMallocBlock(temp))
+    {
+        if (malloc_manager_of_block < temp){break;} // we are comparing the addreses themselves! not the value of the pointers!
+    }
+
+    assert((temp!=nullptr) && "in function '_firstBlockAfter': temp was resolved to nullptr, see code for comment on what to do.");
+    // if the assert failed: need to add a break condition in the for loop or a condition after the loop to make a nullptr return tail.
+
+    return temp;
+}
+
