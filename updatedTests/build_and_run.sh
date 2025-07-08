@@ -1,5 +1,7 @@
 #!/bin/bash
 
+./copy_code
+
 TESTS_GLOB=$1
 
 mkdir -p build
