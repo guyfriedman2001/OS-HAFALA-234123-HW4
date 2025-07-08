@@ -1,5 +1,5 @@
 typedef unsigned long size_t;    // FIXME: delete this line! its only for my mac
-void *sbrk(size_t payload_size); // FIXME: delete this line! its only for my mac
+void *sbrk(payload_size_t payload_size); // FIXME: delete this line! its only for my mac
 
 #include <cassert>
 #include <string.h>
@@ -7,35 +7,37 @@ void *sbrk(size_t payload_size); // FIXME: delete this line! its only for my mac
 /* typedef for clarity */
 typedef void *payload_start;
 typedef void *actual_block_start;
+typedef size_t payload_size_t;
+typedef size_t actual_size_t;
 
 /* foward declarations */
 struct MallocMetadata;
 
 /* functions from the hw */
-payload_start smalloc(size_t payload_size);
+payload_start smalloc(payload_size_t payload_size);
 payload_start scalloc(size_t num, size_t payload_size);
 void sfree(payload_start p);
-payload_start srealloc(void *oldp, size_t payload_size);
+payload_start srealloc(void *oldp, payload_size_t payload_size);
 size_t _num_free_blocks();
-size_t _num_free_bytes();
+payload_size_t _num_free_bytes();
 size_t _num_allocated_blocks();
 size_t _num_allocated_bytes(); 
 size_t _num_meta_data_bytes();
 size_t _size_meta_data();
 
 /* our helper functions */
-payload_start smalloc_helper_find_avalible(size_t payload_size);
-actual_block_start actually_allocate(size_t actual_block_size);
+payload_start smalloc_helper_find_avalible(payload_size_t payload_size);
+actual_block_start actually_allocate(actual_size_t actual_block_size);
 inline void markFree(payload_start block);
 inline void markAllocated(payload_start block);
-inline size_t getBlockSize(payload_start block);
+inline payload_size_t getBlockSize(payload_start block);
 inline bool isAllocated(payload_start block);
 inline bool isFree(payload_start block);
-inline bool isSizeValid(size_t payload_size);
+inline bool isSizeValid(payload_size_t payload_size);
 inline void initializeList();
-inline payload_start _initBlock_MetaData(actual_block_start block, size_t actual_block_size);
-inline payload_start initAllocatedBlock(actual_block_start block, size_t actual_block_size);
-inline payload_start initFreeBlock(actual_block_start block, size_t actual_block_size);
+inline payload_start _initBlock_MetaData(actual_block_start block, actual_size_t actual_block_size);
+inline payload_start initAllocatedBlock(actual_block_start block, actual_size_t actual_block_size);
+inline payload_start initFreeBlock(actual_block_start block, actual_size_t actual_block_size);
 inline MallocMetadata *getMallocStruct(payload_start block);
 inline size_t _size_meta_meta_data();
 inline MallocMetadata *getGlobalMallocStructHeadFree(); 
@@ -48,7 +50,7 @@ inline MallocMetadata* _firstBlockAfter(MallocMetadata *malloc_manager_of_block)
 /* memory management meta data struct */
 struct MallocMetadata
 {
-    size_t payload_size;
+    payload_size_t payload_size;
     bool is_free;
     MallocMetadata *next;
     MallocMetadata *prev;
@@ -58,7 +60,7 @@ static MallocMetadata head_dummy = {0, true, nullptr, nullptr};
 static MallocMetadata tail_dummy = {0, true, nullptr, nullptr};
 static bool is_list_initialized = false;
 static size_t num_allocated_blocks = 0;
-static size_t num_allocated_bytes = 0;
+static payload_size_t num_allocated_bytes = 0;
 
 #define ESER_BECHEZKAT_SHMONE (100000000)
 #define BLOCK_BUFFER_SIZE ((sizeof(MallocMetadata)))
@@ -67,7 +69,7 @@ static size_t num_allocated_bytes = 0;
 /* defines for things we need to ask for in the piazza */
 #define ACCOUNT_FOR__size_meta_meta_data (1)  // <- if we do not need to account for size of head_dummy, tail_dummy etc then flip this flag to 0
 
-payload_start smalloc(size_t payload_size)
+payload_start smalloc(payload_size_t payload_size)
 {
     /*
     ● Searches for a free block with at least ‘size’ bytes or allocates (sbrk()) one if none are
@@ -93,7 +95,7 @@ c. If sbrk fails in allocating the needed space, return NULL.
         return look_for_avalible;
     }
 
-    size_t temp_size = payload_size + BLOCK_BUFFER_SIZE;
+    actual_size_t temp_size = (actual_size_t) payload_size + BLOCK_BUFFER_SIZE;
     actual_block_start temp = actually_allocate(temp_size);
     if (temp == nullptr)
     { // allocation might have failed
@@ -118,7 +120,7 @@ void *scalloc(size_t num, size_t size)
     b. If ‘size * num’ is more than 10**8, return NULL.
     c. If sbrk fails in allocating the needed space, return NULL.
     */
-    size_t actual_size = num * size;
+    payload_size_t actual_size = num * size;
     payload_start allocated_block = smalloc(actual_size);
     if (allocated_block == nullptr)
     {
@@ -139,7 +141,7 @@ void sfree(void *p)
     markFree(p); // <- markFree also handles metadata operations.
 }
 
-payload_start srealloc(payload_start oldp, size_t payload_size)
+payload_start srealloc(payload_start oldp, payload_size_t payload_size)
 {
     /*
     ● If 'payload_size' is smaller than or equal to the current block’s size, reuses the same block.
@@ -170,7 +172,7 @@ payload_start srealloc(payload_start oldp, size_t payload_size)
         return temp;
     }
     MallocMetadata *oldp_metadata = getMallocStruct(oldp);
-    size_t oldp_size = oldp_metadata->payload_size;
+    payload_size_t oldp_size = oldp_metadata->payload_size;
     if (oldp_size >= payload_size)
     {
         return oldp;
@@ -203,14 +205,14 @@ size_t _num_free_blocks()
     return free_blocks;
 }
 
-size_t _num_free_bytes()
+payload_size_t _num_free_bytes()
 {
     /*
     ● Returns the number of bytes in all allocated blocks in the heap that are currently free,
       excluding the bytes used by the meta-data structs.
     */
 
-    size_t free_bytes = 0;
+    payload_size_t free_bytes = 0;
 
     MallocMetadata *global_head = getGlobalMallocStructHeadFree();
     MallocMetadata *global_tail = getGlobalMallocStructTailFree();
@@ -271,7 +273,7 @@ inline size_t _size_meta_meta_data()
     #endif // ACCOUNT_FOR__size_meta_meta_data
 }
 
-payload_start smalloc_helper_find_avalible(size_t payload_size)
+payload_start smalloc_helper_find_avalible(payload_size_t payload_size)
 {
     // finds first avalible block with capacity that is at least what is requested (no fancy math)
     // only return the pointer to the payload, not the struct itself.
@@ -281,13 +283,14 @@ payload_start smalloc_helper_find_avalible(size_t payload_size)
     {
         if (temp->payload_size >= payload_size)
         {
-            return getStructsPayload(temp);
+            payload_start fitting_block = getStructsPayload(temp);
+            return fitting_block;
         }
     }
     return nullptr;
 }
 
-actual_block_start actually_allocate(size_t actual_block_size)
+actual_block_start actually_allocate(actual_size_t actual_block_size)
 { // literally copy paste of the previous part.
     if (actual_block_size <= 0 || actual_block_size > ESER_BECHEZKAT_SHMONE)
     {
@@ -322,7 +325,7 @@ inline bool isFree(payload_start block)
     return blocks_metadata_manager->is_free;
 }
 
-inline bool isSizeValid(size_t payload_size)
+inline bool isSizeValid(payload_size_t payload_size)
 {
     return ((payload_size > 0) && (payload_size <= ESER_BECHEZKAT_SHMONE));
 }
@@ -372,13 +375,13 @@ inline void markFree(payload_start block)
     _placeBlockInFreeList(blocks_metadata_manager); // <- expects a free marked block!
 }
 
-inline size_t getBlockSize(payload_start block)
+inline payload_size_t getBlockSize(payload_start block)
 {
     MallocMetadata *blocks_metadata_manager = getMallocStruct(block);
     return blocks_metadata_manager->payload_size;
 }
 
-inline payload_start _initBlock_MetaData(actual_block_start block, size_t actual_block_size)
+inline payload_start _initBlock_MetaData(actual_block_start block, actual_size_t actual_block_size)
 {
     // create the metadata with regards to the actuall block start, and return the payload block start.
     // need to initialise: MallocMetadata struct, MallocMetadata->payload_size = actual_block_size, MallocMetadata->is_free = false, other MallocMetadata fields can be garbage.
@@ -394,14 +397,14 @@ inline payload_start _initBlock_MetaData(actual_block_start block, size_t actual
     return getStructsPayload(meta_data);
 }
 
-inline payload_start initAllocatedBlock(actual_block_start block, size_t actual_block_size)
+inline payload_start initAllocatedBlock(actual_block_start block, actual_size_t actual_block_size)
 {
     payload_start temp = initFreeBlock(block, actual_block_size); // <- initFreeBlock initialises the linked list
     markAllocated(temp);                                          // <- mark allocated removes from linked list, make sure linked list is initialised.
     return temp;
 }
 
-inline payload_start initFreeBlock(actual_block_start block, size_t actual_block_size)
+inline payload_start initFreeBlock(actual_block_start block, actual_size_t actual_block_size)
 {
     payload_start temp = _initBlock_MetaData(block, actual_block_size);
     markFree(temp); // <- put block in the free linked list, and update markers.
