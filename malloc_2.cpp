@@ -64,6 +64,9 @@ static size_t num_allocated_bytes = 0;
 #define BLOCK_BUFFER_SIZE ((sizeof(MallocMetadata)))
 #define SYSCALL_FAILED(POINTER) (((long int)POINTER) == -1)
 
+/* defines for things we need to ask for in the piazza */
+#define ACCOUNT_FOR__size_meta_meta_data (1)  // <- if we do not need to account for size of head_dummy, tail_dummy etc then flip this flag to 0
+
 payload_start smalloc(size_t payload_size)
 {
     /*
@@ -257,11 +260,15 @@ size_t _size_meta_meta_data()
     /*
     ● Returns the number of bytes of a meta-data in your system that are not related to the blocks.
     */
+    #if ACCOUNT_FOR__size_meta_meta_data
     size_t bytes_for_linked_list_head_and_tail = 2*sizeof(MallocMetadata);
     size_t bytes_for_initialised_linked_list_bool = sizeof(bool);
     size_t bytes_for_allocation_counters = 2*sizeof(size_t);
     size_t total_meta_metadata_bytes = (bytes_for_linked_list_head_and_tail + bytes_for_initialised_linked_list_bool + bytes_for_allocation_counters);
     return total_meta_metadata_bytes;
+    #else // ACCOUNT_FOR__size_meta_meta_data
+    return 0;
+    #endif // ACCOUNT_FOR__size_meta_meta_data
 }
 
 payload_start smalloc_helper_find_avalible(size_t payload_size)
@@ -301,7 +308,7 @@ actual_block_start actually_allocate(size_t actual_block_size)
         return nullptr;
     }
 
-    return meta_block_start;
+    return (actual_block_start) meta_block_start;
 }
 
 inline bool isAllocated(payload_start block)
@@ -362,7 +369,7 @@ inline void markFree(payload_start block)
     // mark free
     blocks_metadata_manager->is_free = true;
 
-    _placeBlockInFreeList(blocks_metadata_manager); // <- expects a free block!
+    _placeBlockInFreeList(blocks_metadata_manager); // <- expects a free marked block!
 }
 
 inline size_t getBlockSize(payload_start block)
