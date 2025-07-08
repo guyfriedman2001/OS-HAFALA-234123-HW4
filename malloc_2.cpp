@@ -270,7 +270,7 @@ payload_size_t _num_free_bytes()
     MallocMetadata *global_tail = getGlobalMallocStructTailFree();
     for (MallocMetadata *temp = getNextMallocBlock(global_head); temp != global_tail; temp = getNextMallocBlock(temp))
     {
-        free_bytes += temp->payload_size;
+        free_bytes = (((size_t)free_bytes)+((size_t)temp->payload_size));// free_bytes += temp->payload_size;
     }
 
     return free_bytes;
@@ -440,7 +440,7 @@ inline payload_start _initBlock_MetaData(actual_block_start block, actual_size_t
     // IMPORTANT TO FOLLOW THESE INITIALISATIONS, other functions do not check for validity of data for speed,
     // therefore these fields must be initialised for these values!
 
-    MallocMetadata *meta_data = (MallocMetadata *)block;
+    MallocMetadata *meta_data = (MallocMetadata *)(void*)block;
     meta_data->payload_size = actual_block_size - BLOCK_BUFFER_SIZE;
     meta_data->is_free = false;
     meta_data->next = nullptr;
@@ -465,7 +465,7 @@ inline payload_start initFreeBlock(actual_block_start block, actual_size_t actua
 
 inline MallocMetadata *getMallocStruct(payload_start block)
 {
-    MallocMetadata *temp = (MallocMetadata *)block;
+    MallocMetadata *temp = (MallocMetadata *)(void*)block;
     MallocMetadata *meta_data = temp - 1;
     return meta_data;
 }
