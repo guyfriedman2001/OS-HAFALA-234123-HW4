@@ -90,6 +90,10 @@ c. If sbrk fails in allocating the needed space, return NULL.
 
     size_t temp_size = payload_size + BLOCK_BUFFER_SIZE;
     actual_block_start temp = actually_allocate(temp_size);
+    if (temp == nullptr)
+    { // allocation might have failed
+        return nullptr;
+    }
     payload_start new_allocation = initAllocatedBlock(temp, temp_size);
     num_allocated_blocks++;
     num_allocated_bytes += payload_size;
@@ -251,7 +255,11 @@ size_t _size_meta_meta_data()
     /*
     ● Returns the number of bytes of a meta-data in your system that are not related to the blocks.
     */
-    return -1;
+    size_t bytes_for_linked_list_head_and_tail = 2*sizeof(MallocMetadata);
+    size_t bytes_for_initialised_linked_list_bool = sizeof(bool);
+    size_t bytes_for_allocation_counters = 2*sizeof(size_t);
+    size_t total_meta_metadata_bytes = (bytes_for_linked_list_head_and_tail + bytes_for_initialised_linked_list_bool + bytes_for_allocation_counters);
+    return total_meta_metadata_bytes;
 }
 
 payload_start smalloc_helper_find_avalible(size_t payload_size)
