@@ -1,7 +1,6 @@
 typedef unsigned long size_t;    // FIXME: delete this line! its only for my mac
 void *sbrk(payload_size_t payload_size); // FIXME: delete this line! its only for my mac
 
-#include <cassert>
 #include <string.h>
 
 /* typedef for clarity */
@@ -68,6 +67,14 @@ static payload_size_t num_allocated_bytes = 0;
 
 /* defines for things we need to ask for in the piazza */
 #define ACCOUNT_FOR__size_meta_meta_data (1)  // <- if we do not need to account for size of head_dummy, tail_dummy etc then flip this flag to 0
+#define IS_OK_TO_INCLUDE_ASSERT (1)           // <- if we can not include assert, flip flag to 0.
+
+#if IS_OK_TO_INCLUDE_ASSERT
+#include <cassert>
+#else //IS_OK_TO_INCLUDE_ASSERT
+#define assert(expr) ((void)0) // <- if we can not include assert, this is (apperantly) a valid no-op statement.
+#endif //IS_OK_TO_INCLUDE_ASSERT
+
 
 payload_start smalloc(payload_size_t payload_size)
 {
