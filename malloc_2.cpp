@@ -3,11 +3,68 @@ void *sbrk(payload_size_t payload_size); // FIXME: delete this line! its only fo
 
 #include <string.h>
 
+#define ESER_BECHEZKAT_SHMONE (100000000)
+#define BLOCK_BUFFER_SIZE ((sizeof(MallocMetadata)))
+#define SYSCALL_FAILED(POINTER) (((long int)POINTER) == -1)
+
+/* defines for things we need to ask for in the piazza */
+#define ACCOUNT_FOR__size_meta_meta_data (1)  // <- if we do not need to account for size of head_dummy, tail_dummy etc then flip this flag to 0
+#define IS_OK_TO_INCLUDE_ASSERT (1)           // <- if we can not include assert, flip flag to 0.
+#define HARD_TYPE_CHECK (1)                   // <- controls whether our custom types are enforced by the constructor (=1) or not (=0).
+
+#if IS_OK_TO_INCLUDE_ASSERT
+#include <cassert>
+#else //IS_OK_TO_INCLUDE_ASSERT
+#define assert(expr) ((void)0) // <- if we can not include assert, this is (apperantly) a valid no-op statement.
+#endif //IS_OK_TO_INCLUDE_ASSERT
+
+#if HARD_TYPE_CHECK
+struct payload_start {
+    void* ptr;
+
+    // Implicit conversion FROM void*
+    payload_start(void* p) : ptr(p) {}
+
+    // Implicit conversion TO void*
+    operator void*() const { return ptr; }
+};
+
+struct actual_block_start {
+    void* ptr;
+
+    // Implicit conversion FROM void*
+    actual_block_start(void* p) : ptr(p) {}
+
+    // Implicit conversion TO void*
+    operator void*() const { return ptr; }
+};
+
+struct payload_size_t {
+    size_t value;
+
+    // Implicit conversion from size_t
+    payload_size_t(size_t v) : value(v) {}
+
+    // Implicit conversion to size_t
+    operator size_t() const { return value; }
+};
+
+struct actual_size_t {
+    size_t value;
+
+    // Implicit conversion from size_t
+    actual_size_t(size_t v) : value(v) {}
+
+    // Implicit conversion to size_t
+    operator size_t() const { return value; }
+};
+#else // HARD_TYPE_CHECK
 /* typedef for clarity */
 typedef void *payload_start;
 typedef void *actual_block_start;
 typedef size_t payload_size_t;
 typedef size_t actual_size_t;
+#endif // HARD_TYPE_CHECK
 
 /* foward declarations */
 struct MallocMetadata;
@@ -61,19 +118,7 @@ static bool is_list_initialized = false;
 static size_t num_allocated_blocks = 0;
 static payload_size_t num_allocated_bytes = 0;
 
-#define ESER_BECHEZKAT_SHMONE (100000000)
-#define BLOCK_BUFFER_SIZE ((sizeof(MallocMetadata)))
-#define SYSCALL_FAILED(POINTER) (((long int)POINTER) == -1)
 
-/* defines for things we need to ask for in the piazza */
-#define ACCOUNT_FOR__size_meta_meta_data (1)  // <- if we do not need to account for size of head_dummy, tail_dummy etc then flip this flag to 0
-#define IS_OK_TO_INCLUDE_ASSERT (1)           // <- if we can not include assert, flip flag to 0.
-
-#if IS_OK_TO_INCLUDE_ASSERT
-#include <cassert>
-#else //IS_OK_TO_INCLUDE_ASSERT
-#define assert(expr) ((void)0) // <- if we can not include assert, this is (apperantly) a valid no-op statement.
-#endif //IS_OK_TO_INCLUDE_ASSERT
 
 
 payload_start smalloc(payload_size_t payload_size)
@@ -110,11 +155,11 @@ c. If sbrk fails in allocating the needed space, return NULL.
     }
     payload_start new_allocation = initAllocatedBlock(temp, temp_size);
     num_allocated_blocks++;
-    num_allocated_bytes += payload_size;
+    num_allocated_bytes = (((size_t)num_allocated_bytes) + ((size_t)payload_size)); // num_allocated_bytes += payload_size;
     return new_allocation;
 }
 
-void *scalloc(size_t num, size_t size)
+payload_start scalloc(size_t num, size_t size)
 {
     /*
     ● Searches for a free block of at least ‘num’ elements, each ‘size’ bytes that are all set to 0
@@ -174,7 +219,7 @@ payload_start srealloc(payload_start oldp, payload_size_t payload_size)
         if (temp != nullptr)
         {
             num_allocated_blocks++;
-            num_allocated_bytes += payload_size;
+            num_allocated_bytes = (((size_t)num_allocated_bytes) + ((size_t)payload_size)); // num_allocated_bytes += payload_size;
         }
         return temp;
     }
