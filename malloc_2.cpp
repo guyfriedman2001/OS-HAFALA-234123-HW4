@@ -503,8 +503,8 @@ inline void _placeBlockInFreeList(MallocMetadata *malloc_manager_of_block){
     assert((malloc_manager_of_block!=nullptr) && "in function '_placeBlockInFreeList': recieved nullptr as \"(MallocMetadata *malloc_manager_of_block\" argument.");
 
     // add to doubly linked list, regard previous pointers in the block meta data as garbage.
-    MallocMetadata *global_head = getGlobalMallocStructHeadFree();
-    MallocMetadata *blocks_metadata_manager = getMallocStruct(malloc_manager_of_block);
+    //MallocMetadata *global_head = getGlobalMallocStructHeadFree();
+    //MallocMetadata *blocks_metadata_manager = getMallocStruct(malloc_manager_of_block);
 
     // make sure block was marked as free
     assert(malloc_manager_of_block->is_free && "in function '_placeBlockInFreeList': block was not marked as free before insertion attempt into the free linked list.");
