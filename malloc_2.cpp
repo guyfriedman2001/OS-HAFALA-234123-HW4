@@ -120,14 +120,14 @@ void *scalloc(size_t num, size_t size)
     b. If ‘size * num’ is more than 10**8, return NULL.
     c. If sbrk fails in allocating the needed space, return NULL.
     */
-    payload_size_t actual_size = num * size;
-    payload_start allocated_block = smalloc(actual_size);
+    payload_size_t actual_payload_size = num * size;
+    payload_start allocated_block = smalloc(actual_payload_size);
     if (allocated_block == nullptr)
     {
         return nullptr;
     }
 
-    memset(allocated_block, 0, actual_size);
+    memset(allocated_block, 0, actual_payload_size);
     return allocated_block;
 }
 
