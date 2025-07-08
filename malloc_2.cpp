@@ -221,6 +221,7 @@ payload_start srealloc(payload_start oldp, payload_size_t payload_size)
     }
     if (oldp == nullptr)
     {
+        #if 0
         payload_start temp = smalloc(payload_size);
         if (temp != nullptr)
         {
@@ -228,6 +229,9 @@ payload_start srealloc(payload_start oldp, payload_size_t payload_size)
             num_allocated_bytes = (((size_t)num_allocated_bytes) + ((size_t)payload_size)); // num_allocated_bytes += payload_size;
         }
         return temp;
+        #else
+        return smalloc(payload_size);
+        #endif
     }
     MallocMetadata *oldp_metadata = getMallocStruct(oldp);
     payload_size_t oldp_size = oldp_metadata->payload_size;
@@ -337,7 +341,8 @@ payload_start smalloc_helper_find_avalible(payload_size_t payload_size)
     // only return the pointer to the payload, not the struct itself.
     MallocMetadata *global_head = getGlobalMallocStructHeadFree();
     MallocMetadata *global_tail = getGlobalMallocStructTailFree();
-    for (MallocMetadata *temp = getNextMallocBlock(global_head); temp != global_tail; temp = getNextMallocBlock(temp))
+    MallocMetadata *temp;
+    for (temp = getNextMallocBlock(global_head); temp != global_tail; temp = getNextMallocBlock(temp))
     {
         if (((size_t)temp->payload_size) >= ((size_t)payload_size))
         {
