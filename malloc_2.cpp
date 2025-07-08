@@ -37,7 +37,7 @@ inline payload_start _initBlock_MetaData(actual_block_start block, size_t actual
 inline payload_start initAllocatedBlock(actual_block_start block, size_t actual_block_size);
 inline payload_start initFreeBlock(actual_block_start block, size_t actual_block_size);
 inline MallocMetadata *getMallocStruct(payload_start block);
-size_t _size_meta_meta_data();
+inline size_t _size_meta_meta_data();
 inline MallocMetadata *getGlobalMallocStructHeadFree(); 
 inline MallocMetadata *getNextMallocBlock(MallocMetadata *current_block);
 inline MallocMetadata *getGlobalMallocStructTailFree(); 
@@ -255,7 +255,7 @@ size_t _size_meta_data()
     return sizeof(MallocMetadata);
 }
 
-size_t _size_meta_meta_data()
+inline size_t _size_meta_meta_data()
 {   // <- TODO: ask in the piazza if this is needed, if not simply return 0
     /*
     ● Returns the number of bytes of a meta-data in your system that are not related to the blocks.
