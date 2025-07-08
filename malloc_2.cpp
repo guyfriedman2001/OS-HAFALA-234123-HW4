@@ -2,6 +2,7 @@
 //void *sbrk(payload_size_t payload_size); // FIXME: delete this line! its only for my mac
 
 #include <string.h>
+#include <unistd.h>
 
 #define ESER_BECHEZKAT_SHMONE (100000000)
 #define BLOCK_BUFFER_SIZE ((sizeof(MallocMetadata)))
