@@ -1,5 +1,5 @@
-typedef unsigned long size_t;    // FIXME: delete this line! its only for my mac
-void *sbrk(payload_size_t payload_size); // FIXME: delete this line! its only for my mac
+//typedef unsigned long size_t;    // FIXME: delete this line! its only for my mac
+//void *sbrk(payload_size_t payload_size); // FIXME: delete this line! its only for my mac
 
 #include <string.h>
 
