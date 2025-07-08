@@ -1,3 +1,48 @@
+/* experimental code below, to replace the typdefs with hard type checks */
+
+struct payload_start {
+    void* ptr;
+
+    // Implicit conversion FROM void*
+    payload_start(void* p) : ptr(p) {}
+
+    // Implicit conversion TO void*
+    operator void*() const { return ptr; }
+};
+
+struct actual_block_start {
+    void* ptr;
+
+    // Implicit conversion FROM void*
+    actual_block_start(void* p) : ptr(p) {}
+
+    // Implicit conversion TO void*
+    operator void*() const { return ptr; }
+};
+
+struct payload_size_t {
+    size_t value;
+
+    // Implicit conversion from size_t
+    payload_size_t(size_t v) : value(v) {}
+
+    // Implicit conversion to size_t
+    operator size_t() const { return value; }
+};
+
+struct actual_size_t {
+    size_t value;
+
+    // Implicit conversion from size_t
+    actual_size_t(size_t v) : value(v) {}
+
+    // Implicit conversion to size_t
+    operator size_t() const { return value; }
+};
+
+/* experimental code above, to replace the typdefs with hard type checks */
+
+
 /* old declarations from part 2 below */
 
 typedef unsigned long size_t;    // FIXME: delete this line! its only for my mac
@@ -6,11 +51,13 @@ void *sbrk(payload_size_t payload_size); // FIXME: delete this line! its only fo
 #include <cassert>
 #include <string.h>
 
+#if 0
 /* typedef for clarity */
 typedef void *payload_start;
 typedef void *actual_block_start;
 typedef size_t payload_size_t;
 typedef size_t actual_size_t;
+#endif
 
 /* foward declarations */
 struct MallocMetadata;
