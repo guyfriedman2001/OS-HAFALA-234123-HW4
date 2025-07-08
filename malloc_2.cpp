@@ -421,6 +421,7 @@ inline void markAllocated(payload_start block)
 
 inline void markFree(payload_start block)
 {
+    if (block == nullptr){return;} //make it safe for freeing nullptr.
     // mark bool as free, add to doubly linked list, regard previous pointers in the block meta data as garbage.
     //  IMPORTANT: NO DOUBLE FREE CALLS!
     MallocMetadata *blocks_metadata_manager = getMallocStruct(block);
