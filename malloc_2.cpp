@@ -12,11 +12,16 @@ void *sbrk(payload_size_t payload_size); // FIXME: delete this line! its only fo
 #define IS_OK_TO_INCLUDE_ASSERT (1)           // <- if we can not include assert, flip flag to 0.
 #define HARD_TYPE_CHECK (1)                   // <- controls whether our custom types are enforced by the compiler (=1) or not (=0).
 
+
+
+
 #if IS_OK_TO_INCLUDE_ASSERT
 #include <cassert>
 #else //IS_OK_TO_INCLUDE_ASSERT
 #define assert(expr) ((void)0) // <- if we can not include assert, this is (apperantly) a valid no-op statement.
 #endif //IS_OK_TO_INCLUDE_ASSERT
+
+
 
 #if HARD_TYPE_CHECK
 struct payload_start {
@@ -225,7 +230,7 @@ payload_start srealloc(payload_start oldp, payload_size_t payload_size)
     }
     MallocMetadata *oldp_metadata = getMallocStruct(oldp);
     payload_size_t oldp_size = oldp_metadata->payload_size;
-    if (oldp_size >= payload_size)
+    if (((size_t)oldp_size) >= ((size_t)payload_size))
     {
         return oldp;
     }
@@ -333,7 +338,7 @@ payload_start smalloc_helper_find_avalible(payload_size_t payload_size)
     MallocMetadata *global_tail = getGlobalMallocStructTailFree();
     for (MallocMetadata *temp = getNextMallocBlock(global_head); temp != global_tail; temp = getNextMallocBlock(temp))
     {
-        if (temp->payload_size >= payload_size)
+        if (((size_t)temp->payload_size) >= ((size_t)payload_size))
         {
             payload_start fitting_block = getStructsPayload(temp);
             return fitting_block;
@@ -344,7 +349,7 @@ payload_start smalloc_helper_find_avalible(payload_size_t payload_size)
 
 actual_block_start actually_allocate(actual_size_t actual_block_size)
 { // literally copy paste of the previous part.
-    if (actual_block_size <= 0 || actual_block_size > ESER_BECHEZKAT_SHMONE)
+    if (((size_t)actual_block_size) <= 0 || ((size_t)actual_block_size) > ESER_BECHEZKAT_SHMONE)
     {
         return nullptr;
     }
@@ -379,7 +384,7 @@ inline bool isFree(payload_start block)
 
 inline bool isSizeValid(payload_size_t payload_size)
 {
-    return ((payload_size > 0) && (payload_size <= ESER_BECHEZKAT_SHMONE));
+    return ((((size_t)payload_size) > 0) && (((size_t)payload_size) <= ESER_BECHEZKAT_SHMONE));
 }
 
 inline void initializeList()
@@ -441,7 +446,7 @@ inline payload_start _initBlock_MetaData(actual_block_start block, actual_size_t
     // therefore these fields must be initialised for these values!
 
     MallocMetadata *meta_data = (MallocMetadata *)(void*)block;
-    meta_data->payload_size = actual_block_size - BLOCK_BUFFER_SIZE;
+    meta_data->payload_size = (((size_t)actual_block_size) - BLOCK_BUFFER_SIZE);
     meta_data->is_free = false;
     meta_data->next = nullptr;
     meta_data->prev = getGlobalMallocStructTailFree();
