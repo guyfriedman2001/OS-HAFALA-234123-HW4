@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <iostream>
 
-#define ESER_BECHEZKAT_SHMONE (100000000)
+#define ESER_BECHEZKAT_SHMONE (100'000'000) //((size_t)1e8) // (100000000)
 #define BLOCK_BUFFER_SIZE ((sizeof(MallocMetadata)))
 #define SYSCALL_FAILED(POINTER) (((long int)POINTER) == -1)
 
@@ -13,7 +13,7 @@
 #define ACCOUNT_FOR__size_meta_meta_data (0) // <- if we do not need to account for size of head_dummy, tail_dummy etc then flip this flag to 0
 #define IS_OK_TO_INCLUDE_ASSERT (1)          // <- if we can not include assert, flip flag to 0.
 #define HARD_TYPE_CHECK (1)                  // <- controls whether our custom types are enforced by the compiler (=1) or not (=0).
-#define NUM_ORDERS (10)                      // <- number of 'orders' our code will handle, as per the instructions.
+#define NUM_ORDERS ((size_t)10)                      // <- number of 'orders' our code will handle, as per the instructions.
 
 #if IS_OK_TO_INCLUDE_ASSERT
 #include <cassert>
@@ -80,7 +80,7 @@ struct MallocMetadata;
 payload_start smalloc(payload_size_t payload_size);
 payload_start scalloc(size_t num, size_t payload_size);
 void sfree(payload_start p);
-payload_start srealloc(void *oldp, payload_size_t payload_size);
+payload_start srealloc(payload_start oldp, payload_size_t payload_size);
 size_t _num_free_blocks();
 payload_size_t _num_free_bytes();
 size_t _num_allocated_blocks();
@@ -198,7 +198,7 @@ payload_start scalloc(size_t num, size_t size)
     return allocated_block;
 }
 
-void sfree(void *p)
+void sfree(payload_start p)
 {
     /*
     ● Releases the usage of the block that starts with the pointer ‘p’.
