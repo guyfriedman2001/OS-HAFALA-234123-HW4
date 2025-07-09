@@ -12,7 +12,7 @@
 /* defines for things we need to ask for in the piazza */
 #define ACCOUNT_FOR__size_meta_meta_data (0) // <- if we do not need to account for size of head_dummy, tail_dummy etc then flip this flag to 0
 #define IS_OK_TO_INCLUDE_ASSERT (1)          // <- if we can not include assert, flip flag to 0.
-#define HARD_TYPE_CHECK (1)                  // <- controls whether our custom types are enforced by the compiler (=1) or not (=0).
+#define HARD_TYPE_CHECK (0)                  // <- controls whether our custom types are enforced by the compiler (=1) or not (=0).
 #define NUM_ORDERS ((size_t)10)                      // <- number of 'orders' our code will handle, as per the instructions.
 
 #if IS_OK_TO_INCLUDE_ASSERT
@@ -90,7 +90,7 @@ size_t _size_meta_data();
 
 /* our helper functions */
 payload_start smalloc_helper_find_avalible(payload_size_t payload_size);
-actual_block_start actually_allocate(actual_size_t actual_block_size);
+actual_block_start smalloc_helper_break_existing(actual_size_t actual_block_size);
 inline void markFree(payload_start block);
 inline void markAllocated(payload_start block);
 inline payload_size_t getBlockSize(payload_start block);
@@ -163,7 +163,7 @@ c. If sbrk fails in allocating the needed space, return NULL.
     }
 
     actual_size_t temp_size = (actual_size_t)payload_size + BLOCK_BUFFER_SIZE;
-    actual_block_start temp = actually_allocate(temp_size);
+    actual_block_start temp = smalloc_helper_break_existing(temp_size);
     if (temp == nullptr)
     { // allocation might have failed
         return nullptr;
@@ -370,7 +370,7 @@ payload_start smalloc_helper_find_avalible(payload_size_t payload_size)
     return nullptr;
 }
 
-actual_block_start actually_allocate(actual_size_t actual_block_size)
+actual_block_start smalloc_helper_break_existing(actual_size_t actual_block_size)
 { // literally copy paste of the previous part.
     /*if (((size_t)actual_block_size) <= 0 || ((size_t)actual_block_size) > ESER_BECHEZKAT_SHMONE)
     {
