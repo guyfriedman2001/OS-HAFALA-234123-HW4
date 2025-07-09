@@ -104,9 +104,9 @@ inline payload_start initAllocatedBlock(actual_block_start block, actual_size_t 
 inline payload_start initFreeBlock(actual_block_start block, actual_size_t actual_block_size);
 inline MallocMetadata *getMallocStruct(payload_start block);
 inline size_t _size_meta_meta_data();
-inline MallocMetadata *getHeadAtOrder(int order);
+inline MallocMetadata *getHeadAtOrder(size_t order);
 inline MallocMetadata *getNextMallocBlock(MallocMetadata *current_block);
-inline MallocMetadata *getTailAtOrder(int order);
+inline MallocMetadata *getTailAtOrder(size_t order);
 inline payload_start getStructsPayload(MallocMetadata *malloc_of_block);
 inline void _placeBlockInFreeList(MallocMetadata *malloc_manager_of_block);
 inline MallocMetadata *_firstBlockAfter(MallocMetadata *malloc_manager_of_block);
@@ -540,7 +540,7 @@ inline MallocMetadata *getMallocStruct(payload_start block)
     return meta_data;
 }
 
-inline MallocMetadata *getHeadAtOrder(int order)
+inline MallocMetadata *getHeadAtOrder(size_t order)
 {
     return &head_dummy_array[order];
 }
@@ -555,7 +555,7 @@ inline MallocMetadata *getNextMallocBlock(MallocMetadata *current_block)
     return current_block->next;
 }
 
-inline MallocMetadata *getTailAtOrder(int order)
+inline MallocMetadata *getTailAtOrder(size_t order)
 {
     return &tail_dummy_array[order];
 }
