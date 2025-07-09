@@ -1,1 +1,47 @@
 .DS_Store
+
+# Build directories
+/build/
+/CMakeFiles/
+/cmake-build-*/
+*/CMakeFiles/
+*/build/
+
+# CMake generated files
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+Makefile.in
+Makefile.out
+compile_commands.json
+CTestTestfile.cmake
+DartConfiguration.tcl
+CMakeScripts/
+Testing/
+install_manifest.txt
+flags.make
+depend.make
+progress.make
+*.dir/
+
+# Catch2 + test binaries and artifacts
+catch2-populate*
+catch_user_config*
+*_test
+*_test.in
+*_test_temp
+
+# Object and binary files
+*.a
+*.so
+*.o
+*.obj
+*.exe
+*.out
+*.log
+
+# IDEs
+.vscode/
+.idea/
+*.code-workspace
+

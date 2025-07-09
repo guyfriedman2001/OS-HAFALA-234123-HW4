@@ -97,6 +97,7 @@ inline bool isAllocated(payload_start block);
 inline bool isFree(payload_start block);
 inline bool isSizeValid(payload_size_t payload_size);
 inline void initializeList();
+inline void initializeBuddy();
 inline payload_start _initBlock_MetaData(actual_block_start block, actual_size_t actual_block_size);
 inline payload_start initAllocatedBlock(actual_block_start block, actual_size_t actual_block_size);
 inline payload_start initFreeBlock(actual_block_start block, actual_size_t actual_block_size);
@@ -121,6 +122,7 @@ struct MallocMetadata
 static MallocMetadata head_dummy = {0, true, nullptr, nullptr};
 static MallocMetadata tail_dummy = {0, true, nullptr, nullptr};
 static bool is_list_initialized = false;
+static bool is_buddy_initialized = false;
 static size_t num_allocated_blocks = 0;
 static payload_size_t num_allocated_bytes = 0;
 
@@ -129,13 +131,13 @@ payload_start smalloc(payload_size_t payload_size)
     /*
     ● Searches for a free block with at least ‘size’ bytes or allocates (sbrk()) one if none are
     found.
-    ● Return value:
-    i. Success – returns pointer to the first byte in the allocated block (excluding the meta-data of
-    course)
-    ii. Failure –
-        a. If size is 0 returns NULL.
-        b. If ‘size’ is more than 10**8, return NULL.
-        c. If sbrk fails in allocating the needed space, return NULL.
+● Return value:
+i. Success – returns pointer to the first byte in the allocated block (excluding the meta-data of
+course)
+ii. Failure –
+a. If size is 0 returns NULL.
+b. If ‘size’ is more than 10**8, return NULL.
+c. If sbrk fails in allocating the needed space, return NULL.
     */
     if (!isSizeValid(payload_size))
     {
@@ -398,6 +400,14 @@ inline void initializeList()
         head_dummy.next = &tail_dummy;
         tail_dummy.prev = &head_dummy;
         is_list_initialized = true;
+    }
+}
+
+inline void initializeBuddy()
+{
+    if (!is_buddy_initialized)
+    {
+
     }
 }
 
