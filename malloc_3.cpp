@@ -433,6 +433,9 @@ inline void initializeList()
 
     // now after everything is initialised, update the flag.
     is_list_initialized = true;
+
+    // now after the global variables are initialised, initialise all mem alloc (now it can be made in allignment)
+    initializeBuddy();
 }
 
 inline void _init_dummy_MetaData(MallocMetadata* initialise_this){
@@ -449,10 +452,9 @@ inline void _init_dummy_MetaData(MallocMetadata* initialise_this){
 
 inline void initializeBuddy()
 {
-    if (!is_buddy_initialized)
-    {
-
-    }
+    assert(is_list_initialized && "function \"initializeBuddy\" was called before function \"initializeList\"! now allignment checking won't work!");
+    if (is_buddy_initialized){return;}
+    //TODO: implement
 }
 
 inline void markAllocated(payload_start block)
