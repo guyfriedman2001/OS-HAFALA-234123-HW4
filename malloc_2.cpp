@@ -12,7 +12,7 @@
 /* defines for things we need to ask for in the piazza */
 #define ACCOUNT_FOR__size_meta_meta_data (0) // <- if we do not need to account for size of head_dummy, tail_dummy etc then flip this flag to 0
 #define IS_OK_TO_INCLUDE_ASSERT (1)          // <- if we can not include assert, flip flag to 0.
-#define HARD_TYPE_CHECK (0)                  // <- controls whether our custom types are enforced by the compiler (=1) or not (=0).
+#define HARD_TYPE_CHECK (1)                  // <- controls whether our custom types are enforced by the compiler (=1) or not (=0).
 
 #if IS_OK_TO_INCLUDE_ASSERT
 #include <cassert>
