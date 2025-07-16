@@ -75,6 +75,11 @@ typedef size_t actual_size_t;
 /* foward declarations */
 struct MallocMetadata;
 
+const int MAX_ORDER = 10;
+const int MIN_ORDER = 0;
+const int MIN_BLOCK_SIZE = 128;
+const int MAX_SIZE = 128 * 1024;
+
 /* functions from the hw */
 payload_start smalloc(payload_size_t payload_size);
 payload_start scalloc(size_t num, size_t payload_size);
@@ -96,7 +101,7 @@ inline payload_size_t getBlockSize(payload_start block);
 inline bool isAllocated(payload_start block);
 inline bool isFree(payload_start block);
 inline bool isSizeValid(payload_size_t payload_size);
-inline void initializeList();
+// inline void initializeList();
 inline void initializeBuddy();
 inline payload_start _initBlock_MetaData(actual_block_start block, actual_size_t actual_block_size);
 inline payload_start initAllocatedBlock(actual_block_start block, actual_size_t actual_block_size);
@@ -109,19 +114,30 @@ inline MallocMetadata *getGlobalMallocStructTailFree();
 inline payload_start getStructsPayload(MallocMetadata *malloc_of_block);
 inline void _placeBlockInFreeList(MallocMetadata *malloc_manager_of_block);
 inline MallocMetadata *_firstBlockAfter(MallocMetadata *malloc_manager_of_block);
+inline void add_to_free_list(MallocMetadata *block);
+inline void remove_from_free_list(MallocMetadata *block);
+inline size_t block_size(int order);
+inline MallocMetadata* add_bytes(void* base, size_t offset);
+inline int calc_order(payload_size_t payload_size);
+inline MallocMetadata* split_block(MallocMetadata* block, int target_order);
+inline void merge_buddies(MallocMetadata* block);
 
 /* memory management meta data struct */
 struct MallocMetadata
 {
     payload_size_t payload_size;
     bool is_free;
+    bool is_mmap;
+    int order;
     MallocMetadata *next;
     MallocMetadata *prev;
 };
 
-static MallocMetadata head_dummy = {0, true, nullptr, nullptr};
-static MallocMetadata tail_dummy = {0, true, nullptr, nullptr};
-static bool is_list_initialized = false;
+MallocMetadata *free_block_lists[MAX_ORDER + 1] = {nullptr};
+
+// static MallocMetadata head_dummy = {0, true, false, 0, nullptr, nullptr};
+// static MallocMetadata tail_dummy = {0, true, false, 0, nullptr, nullptr};
+// static bool is_list_initialized = false;
 static bool is_buddy_initialized = false;
 static size_t num_allocated_blocks = 0;
 static payload_size_t num_allocated_bytes = 0;
@@ -131,19 +147,19 @@ payload_start smalloc(payload_size_t payload_size)
     /*
     ● Searches for a free block with at least ‘size’ bytes or allocates (sbrk()) one if none are
     found.
-● Return value:
-i. Success – returns pointer to the first byte in the allocated block (excluding the meta-data of
-course)
-ii. Failure –
-a. If size is 0 returns NULL.
-b. If ‘size’ is more than 10**8, return NULL.
-c. If sbrk fails in allocating the needed space, return NULL.
+    ● Return value:
+    i. Success – returns pointer to the first byte in the allocated block (excluding the meta-data of
+    course)
+    ii. Failure –
+        a. If size is 0 returns NULL.
+        b. If ‘size’ is more than 10**8, return NULL.
+        c. If sbrk fails in allocating the needed space, return NULL.
     */
     if (!isSizeValid(payload_size))
     {
         return nullptr;
     }
-    initializeList();
+    initializeBuddy();
     payload_start look_for_avalible = smalloc_helper_find_avalible(payload_size);
 
     if (look_for_avalible != nullptr)
@@ -253,7 +269,7 @@ size_t _num_free_blocks()
     /*
     ● Returns the number of allocated blocks in the heap that are currently free.
     */
-    initializeList();
+    /*
     size_t free_blocks = 0;
 
     MallocMetadata *global_head = getGlobalMallocStructHeadFree();
@@ -263,7 +279,20 @@ size_t _num_free_blocks()
         ++free_blocks;
     }
 
-    return free_blocks;
+    return free_blocks;*/
+
+    initializeBuddy();
+    size_t count = 0;
+    for (int i = MIN_ORDER; i <= MAX_ORDER; ++i)
+    {
+        MallocMetadata *node = free_block_lists[i];
+        while (node != nullptr)
+        {
+            count++;           
+            node = node->next;
+        }
+    }
+    return count;
 }
 
 payload_size_t _num_free_bytes()
@@ -272,7 +301,7 @@ payload_size_t _num_free_bytes()
     ● Returns the number of bytes in all allocated blocks in the heap that are currently free,
       excluding the bytes used by the meta-data structs.
     */
-    initializeList();
+    /*
     payload_size_t free_bytes = 0;
 
     MallocMetadata *global_head = getGlobalMallocStructHeadFree();
@@ -282,7 +311,19 @@ payload_size_t _num_free_bytes()
         free_bytes = (((size_t)free_bytes) + ((size_t)temp->payload_size)); // free_bytes += temp->payload_size;
     }
 
-    return free_bytes;
+    return free_bytes;*/
+
+    initializeBuddy();
+    size_t bytes = 0;
+    for (int i = MIN_ORDER; i <= MAX_ORDER; ++i){
+        MallocMetadata* node = free_block_lists[i];
+        while (node != nullptr)
+        {
+            bytes += node->payload_size;           
+            node = node->next;
+        }
+    }
+    return bytes;
 }
 
 size_t _num_allocated_blocks()
@@ -336,21 +377,27 @@ inline size_t _size_meta_meta_data()
 
 payload_start smalloc_helper_find_avalible(payload_size_t payload_size)
 {
-    // finds first avalible block with capacity that is at least what is requested (no fancy math)
-    // only return the pointer to the payload, not the struct itself.
-    initializeList();
-    MallocMetadata *global_head = getGlobalMallocStructHeadFree();
-    MallocMetadata *global_tail = getGlobalMallocStructTailFree();
-    MallocMetadata *temp;
-    for (temp = getNextMallocBlock(global_head); temp != global_tail; temp = getNextMallocBlock(temp))
+    if (payload_size + sizeof(MallocMetadata) > MAX_SIZE)
+        return nullptr;
+
+    initializeBuddy();
+
+    int target_order = calc_order(payload_size);
+
+    int order = target_order;
+    while (order <= MAX_ORDER && free_block_lists[order] == nullptr)
     {
-        if (((size_t)temp->payload_size) >= ((size_t)payload_size))
-        {
-            payload_start fitting_block = getStructsPayload(temp);
-            return fitting_block;
-        }
+        ++order;
     }
-    return nullptr;
+    if (order > MAX_ORDER)
+    {
+        return nullptr;
+    }
+
+    MallocMetadata* block = free_block_lists[order];
+    markAllocated(getStructsPayload(block));
+    block = split_block(block, target_order);
+    return getStructsPayload(block);
 }
 
 actual_block_start actually_allocate(actual_size_t actual_block_size)
@@ -393,29 +440,33 @@ inline bool isSizeValid(payload_size_t payload_size)
     return ((((size_t)payload_size) > 0) && (((size_t)payload_size) <= ESER_BECHEZKAT_SHMONE));
 }
 
-inline void initializeList()
-{
-    if (!is_list_initialized)
-    {
-        head_dummy.next = &tail_dummy;
-        tail_dummy.prev = &head_dummy;
-        is_list_initialized = true;
-    }
-}
-
 inline void initializeBuddy()
 {
     if (!is_buddy_initialized)
     {
-
+        void *base = sbrk(32 * block_size(MAX_ORDER));
+        for (int i = 0; i < 32; ++i)
+        {
+            MallocMetadata *block = add_bytes(base, i * block_size(MAX_ORDER));
+            block->payload_size = block_size(MAX_ORDER) - sizeof(MallocMetadata);
+            block->is_free = true;
+            block->is_mmap = false;
+            block->order = MAX_ORDER;
+            block->prev = nullptr;
+            block->next = nullptr;
+            markFree(getStructsPayload(block));
+            ++num_allocated_blocks;
+            num_allocated_bytes += block->payload_size;
+        }
+        is_buddy_initialized = true;
     }
 }
 
 inline void markAllocated(payload_start block)
 {
-    // mark bool as allocated, remove from doubly linked list,
+    /*// mark bool as allocated, remove from doubly linked list,
     //  IMPORTANT: regards pointers in doubly linked list as valid data (no null and no garbage)
-    initializeList();
+    initializeBuddy();
     MallocMetadata *blocks_metadata_manager = getMallocStruct(block);
 
     assert(blocks_metadata_manager->next != nullptr); // <- cannot verify garbage though.
@@ -431,13 +482,18 @@ inline void markAllocated(payload_start block)
 
     // truncate pointers to prevent undefined/ unexpected behaviour
     blocks_metadata_manager->next = nullptr;
-    blocks_metadata_manager->prev = nullptr;
+    blocks_metadata_manager->prev = nullptr;*/
+
+    MallocMetadata *meta_data = getMallocStruct(block);
+    if (!meta_data->is_free) return;
+    remove_from_free_list(meta_data);
+    meta_data->is_free = false;
 }
 
 inline void markFree(payload_start block)
 {
-    initializeList();
-    if (block == nullptr)
+    initializeBuddy();
+    /*if (block == nullptr)
     {
         return;
     } // make it safe for freeing nullptr.
@@ -450,7 +506,16 @@ inline void markFree(payload_start block)
     // mark free
     blocks_metadata_manager->is_free = true;
 
-    _placeBlockInFreeList(blocks_metadata_manager); // <- expects a free marked block!
+    _placeBlockInFreeList(blocks_metadata_manager); // <- expects a free marked block!*/
+
+    if (block == nullptr)
+        return;
+    MallocMetadata *meta_data = getMallocStruct(block);
+    if (meta_data->is_free)
+        return;
+    meta_data->is_free = true;
+    add_to_free_list(meta_data);
+    merge_buddies(meta_data);
 }
 
 inline payload_size_t getBlockSize(payload_start block)
@@ -496,10 +561,10 @@ inline MallocMetadata *getMallocStruct(payload_start block)
     return meta_data;
 }
 
-inline MallocMetadata *getGlobalMallocStructHeadFree()
+/*inline MallocMetadata *getGlobalMallocStructHeadFree()
 {
     return &head_dummy;
-}
+}*/
 
 inline MallocMetadata *getNextMallocBlock(MallocMetadata *current_block)
 {
@@ -511,10 +576,10 @@ inline MallocMetadata *getNextMallocBlock(MallocMetadata *current_block)
     return current_block->next;
 }
 
-inline MallocMetadata *getGlobalMallocStructTailFree()
+/*inline MallocMetadata *getGlobalMallocStructTailFree()
 {
     return &tail_dummy;
-}
+}*/
 
 inline payload_start getStructsPayload(MallocMetadata *malloc_of_block)
 {
@@ -525,47 +590,140 @@ inline payload_start getStructsPayload(MallocMetadata *malloc_of_block)
 
 inline void _placeBlockInFreeList(MallocMetadata *malloc_manager_of_block)
 {
-    assert((malloc_manager_of_block != nullptr) && "in function '_placeBlockInFreeList': recieved nullptr as \"(MallocMetadata *malloc_manager_of_block\" argument.");
+    assert(malloc_manager_of_block &&
+           "_placeBlockInFreeList: nullptr block");
+    assert(malloc_manager_of_block->is_free &&
+           "_placeBlockInFreeList: block not marked free");
 
-    // add to doubly linked list, regard previous pointers in the block meta data as garbage.
-    // MallocMetadata *global_head = getGlobalMallocStructHeadFree();
-    // MallocMetadata *blocks_metadata_manager = getMallocStruct(malloc_manager_of_block);
-
-    // make sure block was marked as free
-    assert(malloc_manager_of_block->is_free && "in function '_placeBlockInFreeList': block was not marked as free before insertion attempt into the free linked list.");
-
-    // find the block that would be after the current block in the free linked list
-    MallocMetadata *firstBlockAfter = _firstBlockAfter(malloc_manager_of_block);
-    assert((firstBlockAfter != nullptr) && "in function '_placeBlockInFreeList': block after was returned as nullptr.");
-
-    // adjust new blocks pointers
-    malloc_manager_of_block->next = firstBlockAfter;
-    malloc_manager_of_block->prev = firstBlockAfter->prev;
-
-    // truncate (update) old pointers
-    firstBlockAfter->prev = malloc_manager_of_block;
-    malloc_manager_of_block->prev->next = malloc_manager_of_block;
+    add_to_free_list(malloc_manager_of_block);
 }
 
 inline MallocMetadata *_firstBlockAfter(MallocMetadata *malloc_manager_of_block)
 {
-    assert((malloc_manager_of_block != nullptr) && "in function '_firstBlockAfter': recieved nullptr as \"(MallocMetadata *malloc_manager_of_block\" argument.");
-
-    MallocMetadata *global_head = getGlobalMallocStructHeadFree();
-    MallocMetadata *global_tail = getGlobalMallocStructTailFree();
-    MallocMetadata *temp;
-
-    // find the first block (after head and before tail) with a higher addres than current adress, if there isnt then return tail.
-    for (temp = getNextMallocBlock(global_head); temp != global_tail; temp = getNextMallocBlock(temp))
+    if (malloc_manager_of_block == nullptr)
     {
-        if (malloc_manager_of_block <= temp)
-        {
-            break;
-        } // we are comparing the addreses themselves! not the value of the pointers!
+        return nullptr;
+    }
+    int order = malloc_manager_of_block->order;
+    MallocMetadata *current = free_block_lists[order];
+    while (current && current < malloc_manager_of_block)
+    {
+        current = current->next;
+    }
+    return current;
+}
+
+inline void add_to_free_list(MallocMetadata *block)
+{
+    int order = block->order;
+    MallocMetadata *&head = free_block_lists[order];
+    MallocMetadata *current = head;
+    MallocMetadata *prev = nullptr;
+    while (current && current < block)
+    {
+        prev = current;
+        current = current->next;
     }
 
-    assert((temp != nullptr) && "in function '_firstBlockAfter': temp was resolved to nullptr, see code for comment on what to do.");
-    // if the assert failed: need to add a break condition in the for loop or a condition after the loop to make a nullptr return tail.
-
-    return temp;
+    block->prev = prev;
+    block->next = current;
+    if (prev != nullptr)
+    {
+        prev->next = block;
+    }
+    else
+    {
+        head = block;
+    }
+    if (current != nullptr)
+    {
+        current->prev = block;
+    }
 }
+
+inline void remove_from_free_list(MallocMetadata *block)
+{
+    int order = block->order;
+    if (block->prev != nullptr)
+    {
+        block->prev->next = block->next;
+    }
+    else
+    {
+        free_block_lists[order] = block->next;
+    }
+
+    if (block->next != nullptr)
+    {
+        block->next->prev = block->prev;
+    }
+    block->prev = nullptr;
+    block->next = nullptr;
+}
+
+inline MallocMetadata *add_bytes(void *base, size_t offset)
+{
+    return (MallocMetadata *)((char *)base + offset);
+}
+
+inline size_t block_size(int order)
+{
+    return size_t(128) << order;
+}
+
+inline int calc_order(payload_size_t payload_size)
+{
+    int need = payload_size + sizeof(MallocMetadata);
+    int order = 0;
+    int block = 128;
+    while (block < need && order < MAX_ORDER)
+    {
+        block <<= 1;
+        ++order;
+    }
+    return order;
+}
+
+
+inline MallocMetadata* split_block(MallocMetadata* block, int target_order)
+{
+    while (block->order > target_order)
+    {
+        block->order--;                                
+        size_t half = block_size(block->order);   
+
+        MallocMetadata* buddy = add_bytes((void*)block, half);
+        buddy->payload_size = half - sizeof(MallocMetadata);
+        buddy->is_free      = true;
+        buddy->is_mmap      = false;
+        buddy->order        = block->order;
+        buddy->prev = nullptr;
+        buddy->next = nullptr;
+        markFree(buddy);               
+    }
+    return block;                                      
+}
+
+inline void merge_buddies(MallocMetadata* block)
+{
+    while (block->order < MAX_ORDER)
+    {
+        size_t size = block_size(block->order);
+        MallocMetadata* buddy = add_bytes((void*)((uintptr_t)block ^ size), 0);
+
+        if (!buddy->is_free || buddy->order != block->order)
+            break;                               
+
+        markAllocated(buddy);
+        markAllocated(block);
+
+        if (buddy < block) {
+            block = buddy;
+        }
+        block->order++;                                
+        block->payload_size = block_size(block->order) - sizeof(MallocMetadata);
+
+        markFree(block);                     
+    }
+}
+
