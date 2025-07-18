@@ -189,27 +189,29 @@ c. If sbrk fails in allocating the needed space, return NULL.
     num_allocated_bytes = (((size_t)num_allocated_bytes) + ((size_t)payload_size)); // num_allocated_bytes += payload_size;
     return new_allocation;*/
 
-    if (!isSizeValid(payload_size)) return nullptr;
-    initializeList();                       
+    initializeList();
 
-    if (payload_size + _size_meta_data() < BLOCK_SIZE_BYTES){
-        if (!is_buddy_initialized)
-            initializeBuddy();
+    if (!isSizeValid(payload_size)) return nullptr;
+
+
+    if (payload_size + _size_meta_data() < BLOCK_SIZE_BYTES) {
+        initializeBuddy();  
         payload_start blk = smalloc_helper_find_avalible(payload_size);
-        if (blk) return blk;   
+        return blk;        
     }
     actual_block_start region = smalloc_helper_break_existing(payload_size + _size_meta_data());
     if (!region) return nullptr;
 
-    auto* meta = (MallocMetadata*)region;
+    auto* meta  = (MallocMetadata*)region;
     meta->payload_size = payload_size;
-    meta->is_free = false;
-    meta->is_mmap = true;
-    meta->order = MAX_ORDER + 1;
+    meta->is_free      = false;
+    meta->is_mmap      = true;
+    meta->order        = MAX_ORDER + 1;
     meta->next = meta->prev = nullptr;
+
     ++num_allocated_blocks;
     num_allocated_bytes += payload_size;
-    return getStructsPayload(meta);                          
+    return getStructsPayload(meta);                     
 }
 
 payload_start scalloc(size_t num, size_t size)
@@ -258,8 +260,7 @@ void sfree(payload_start p)
 
     if (meta_data->is_mmap)
     {
-        munmap(static_cast<void*>(meta_data),
-               static_cast<size_t>(meta_data->payload_size) + _size_meta_data());
+        munmap(static_cast<void*>(meta_data), static_cast<size_t>(meta_data->payload_size) + _size_meta_data());
         --num_allocated_blocks;
         num_allocated_bytes -= meta_data->payload_size;
         return;
@@ -551,7 +552,7 @@ inline void initializeList()
     is_list_initialized = true;
 
     // now after the global variables are initialised, initialise all mem alloc (now it can be made in allignment)
-    //initializeBuddy();
+    initializeBuddy();
 }
 
 inline void _init_dummy_MetaData(MallocMetadata* initialise_this){
@@ -755,7 +756,11 @@ inline void _placeBlockInFreeList(MallocMetadata *malloc_manager_of_block)
 
     MallocMetadata* curr = head->next;
     while (curr != tail && curr < malloc_manager_of_block) {
-        curr = curr->next;
+        MallocMetadata* next = curr->next;
+        if (next == nullptr) {      
+            break;
+        }
+        curr = next;
     }
     malloc_manager_of_block->next = curr;
     malloc_manager_of_block->prev = curr->prev;
@@ -838,8 +843,7 @@ inline void insertToFreeList(MallocMetadata* blk)
     _placeBlockInFreeList(blk);     
 }
 
-inline MallocMetadata* splitBlock(MallocMetadata* big,
-                                  size_t target_order)
+inline MallocMetadata* splitBlock(MallocMetadata* big, size_t target_order)
 {
     while (big->order > target_order)
     {
@@ -867,23 +871,23 @@ inline MallocMetadata* splitBlock(MallocMetadata* big,
 
 inline MallocMetadata* merge(MallocMetadata* block)
 {
-    removeFromList(block);
+    if (block && block->prev && block->next)
+        removeFromList(block); 
     while (block->order < MAX_ORDER)
     {
         void* buddy_addr = getBuddyAddress(block, block->order);
-        MallocMetadata* buddy = (MallocMetadata*)buddy_addr;
-        if ((uintptr_t)buddy % orderToSize(block->order) != 0 || !buddy->is_free || buddy->order != block->order)
+        auto* buddy = (MallocMetadata*)buddy_addr;
+        if ((uintptr_t)buddy % orderToSize(block->order) != 0 || !buddy->is_free || buddy->order != block->order || buddy->prev == nullptr || buddy->next == nullptr)
             break;
-        removeFromList(buddy);
-        MallocMetadata* combined = (buddy < block) ? buddy : block;
-        combined->order += 1;
-        combined->payload_size = orderToSize(combined->order) - BLOCK_BUFFER_SIZE;
-
+        removeFromList(buddy);   
+        if (buddy < block)
+            block = buddy;
+        block->order += 1;
+        block->payload_size = orderToSize(block->order) - _size_meta_data();
         --num_allocated_blocks;
-        num_allocated_bytes += _size_meta_data();
-        block = combined;  
+        num_allocated_bytes += _size_meta_data();                
     }
-    insertToFreeList(block);
+    insertToFreeList(block);               
     return block;
 }
 
