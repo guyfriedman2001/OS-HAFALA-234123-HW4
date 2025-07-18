@@ -79,7 +79,7 @@ struct MallocMetadata;
 payload_start smalloc(payload_size_t payload_size);
 payload_start scalloc(size_t num, size_t payload_size);
 void sfree(payload_start p);
-payload_start srealloc(void *oldp, payload_size_t payload_size);
+payload_start srealloc(payload_start oldp, payload_size_t payload_size);
 size_t _num_free_blocks();
 payload_size_t _num_free_bytes();
 size_t _num_allocated_blocks();
@@ -186,7 +186,7 @@ payload_start scalloc(size_t num, size_t size)
     return allocated_block;
 }
 
-void sfree(void *p)
+void sfree(payload_start p)
 {
     /*
     ● Releases the usage of the block that starts with the pointer ‘p’.
