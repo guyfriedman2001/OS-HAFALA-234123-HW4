@@ -15,7 +15,7 @@
 #define ACCOUNT_FOR__size_meta_meta_data (0) // <- if we do not need to account for size of head_dummy, tail_dummy etc then flip this flag to 0
 #define IS_OK_TO_INCLUDE_ASSERT (1)          // <- if we can not include assert, flip flag to 0.
 #define HARD_TYPE_CHECK (0)                  // <- controls whether our custom types are enforced by the compiler (=1) or not (=0).
-#define NUM_ORDERS ((size_t)10)              // <- number of 'orders' our code will handle, as per the instructions.
+#define NUM_ORDERS ((size_t)11)              // <- number of 'orders' our code will handle, as per the instructions.
 
 #if IS_OK_TO_INCLUDE_ASSERT
 #include <cassert>
@@ -78,10 +78,10 @@ typedef size_t actual_size_t;
 /* foward declarations */
 struct MallocMetadata;
 
-const size_t MAX_ORDER        = NUM_ORDERS - 1;         
+const size_t MAX_ORDER = NUM_ORDERS - 1;         
 const size_t BLOCK_SIZE_BYTES = static_cast<size_t>(128) << MAX_ORDER;    
-const size_t BLOCKS_IN_POOL   = 32;                     
-const size_t POOL_SIZE      = BLOCK_SIZE_BYTES * BLOCKS_IN_POOL;
+const size_t BLOCKS_IN_POOL = 32;                     
+const size_t POOL_SIZE = BLOCK_SIZE_BYTES * BLOCKS_IN_POOL;
 
 /* functions from the hw */
 payload_start smalloc(payload_size_t payload_size);
@@ -106,9 +106,9 @@ inline bool isFree(payload_start block);
 inline bool isSizeValid(payload_size_t payload_size);
 inline void initializeList();
 inline void initializeBuddy();
-inline payload_start _initBlock_MetaData(actual_block_start block, actual_size_t actual_block_size);
-inline payload_start initAllocatedBlock(actual_block_start block, actual_size_t actual_block_size);
-inline payload_start initFreeBlock(actual_block_start block, actual_size_t actual_block_size);
+inline payload_start _initBlock_MetaData(actual_block_start block, actual_size_t actual_block_size, bool isMmap, size_t order);
+inline payload_start initAllocatedBlock(actual_block_start block, actual_size_t actual_block_size, bool isMmap, size_t order);
+inline payload_start initFreeBlock(actual_block_start block, actual_size_t actual_block_size, bool iMmap, size_t order);
 inline MallocMetadata *getMallocStruct(payload_start block);
 inline size_t _size_meta_meta_data();
 inline MallocMetadata *getHeadAtOrder(size_t order);
@@ -121,6 +121,13 @@ inline void _init_dummy_MetaData(MallocMetadata* initialise_this);
 inline size_t getOrderOfSize(payload_size_t size);
 inline MallocMetadata *getHeadOfSize(payload_size_t payload_size);
 inline MallocMetadata *getTailOfSize(payload_size_t payload_size);
+inline void removeFromList(MallocMetadata* blk);
+inline void insertToFreeList(MallocMetadata* blk);
+inline MallocMetadata* splitBlock(MallocMetadata* blk, size_t target_order);
+inline MallocMetadata* merge(MallocMetadata* blk);
+inline void* getBuddyAddress(void* block, size_t order);
+inline size_t orderToSize(size_t order);
+
 
 
 
@@ -459,9 +466,9 @@ payload_start smalloc_helper_find_avalible(payload_size_t payload_size)
 
         MallocMetadata* blk = head->next;
         removeFromList(blk);                           
-        blk = splitBlock(blk, order_needed);           
+        blk = splitBlock(blk, order_needed);
+        ++num_allocated_blocks; 
         num_allocated_bytes += payload_size;          
-
         return getStructsPayload(blk);                 
     }
     return nullptr;   
@@ -658,7 +665,6 @@ inline payload_start _initBlock_MetaData(actual_block_start block, actual_size_t
 
     MallocMetadata *meta_data = (MallocMetadata *)(void *)block;
     meta_data->payload_size = (((size_t)actual_block_size) - BLOCK_BUFFER_SIZE);
-    meta_data->is_free = false;
     meta_data->is_mmap = isMmap;
     meta_data->order = order;
     meta_data->next = nullptr;
@@ -667,18 +673,18 @@ inline payload_start _initBlock_MetaData(actual_block_start block, actual_size_t
     return getStructsPayload(meta_data);
 }
 
-inline payload_start initAllocatedBlock(actual_block_start block, actual_size_t actual_block_size, bool isMmap, int order)
+inline payload_start initAllocatedBlock(actual_block_start block, actual_size_t actual_block_size, bool isMmap, size_t order)
 {
-    payload_start temp = initFreeBlock(block, actual_block_size); // <- initFreeBlock initialises the linked list
+    payload_start temp = initFreeBlock(block, actual_block_size, isMmap, order); // <- initFreeBlock initialises the linked list
     if (!isMmap){
         markAllocated(temp);
     }                                          // <- mark allocated removes from linked list, make sure linked list is initialised.
     return temp;
 }
 
-inline payload_start initFreeBlock(actual_block_start block, actual_size_t actual_block_size)
+inline payload_start initFreeBlock(actual_block_start block, actual_size_t actual_block_size, bool iMmap, size_t order)
 {
-    payload_start temp = _initBlock_MetaData(block, actual_block_size);
+    payload_start temp = _initBlock_MetaData(block, actual_block_size, iMmap, order);
     markFree(temp); // <- put block in the free linked list, and update markers.
     return temp;
 }
@@ -785,11 +791,11 @@ inline MallocMetadata *_firstBlockAfter(MallocMetadata *malloc_manager_of_block)
 
 inline size_t getOrderOfSize(payload_size_t size){
     size_t needed = size + sizeof(MallocMetadata);   
-    size_t block  = 128;                             
-    for (size_t order = 0; order < NUM_ORDERS; ++order, block <<= 1)
-        if (needed <= block)
+    for (size_t order = 0; order <= MAX_ORDER; ++order) {
+        if (needed <= orderToSize(order))
             return order;
-    return NUM_ORDERS;  
+    }
+    return MAX_ORDER; 
 }
 
 
@@ -803,7 +809,7 @@ inline MallocMetadata *getTailOfSize(payload_size_t payload_size)
     return getTailAtOrder(getOrderOfSize(payload_size));
 }
 
-static inline void* getBuddyAddress(void* block, size_t order)
+inline void* getBuddyAddress(void* block, size_t order)
 {
     return (void*)((uintptr_t)block ^ orderToSize(order));
 }
@@ -820,6 +826,7 @@ inline void removeFromList(MallocMetadata* blk)
 inline void insertToFreeList(MallocMetadata* blk)
 {
     assert(blk && blk->is_free);
+    assert(blk->order <= MAX_ORDER);
     _placeBlockInFreeList(blk);     
 }
 
@@ -855,22 +862,18 @@ inline MallocMetadata* merge(MallocMetadata* block)
     {
         void* buddy_addr = getBuddyAddress(block, block->order);
         MallocMetadata* buddy = (MallocMetadata*)buddy_addr;
-        if (!buddy->is_free || buddy->order != block->order)
+        if ((uintptr_t)buddy % orderToSize(block->order) != 0 || !buddy->is_free || buddy->order != block->order)
             break;
         removeFromList(buddy);
-        
-        MallocMetadata* combined;
-        if (buddy < block) 
-            combined = buddy;
-        else
-            combined = block;
+        MallocMetadata* combined = (buddy < block) ? buddy : block;
         combined->order += 1;
         combined->payload_size = orderToSize(combined->order) - BLOCK_BUFFER_SIZE;
-        --num_allocated_blocks;
-        block = combined;         
+
+        --num_allocated_blocks;  
     }
     return block;
 }
+
 
 inline size_t orderToSize(size_t order)
 {
