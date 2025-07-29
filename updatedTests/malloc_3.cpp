@@ -190,12 +190,12 @@ c. If sbrk fails in allocating the needed space, return NULL.
     return new_allocation;*/
 
     initializeList();
-
+    initializeBuddy(); 
     if (!isSizeValid(payload_size)) return nullptr;
 
 
     if (payload_size + _size_meta_data() < BLOCK_SIZE_BYTES) {
-        initializeBuddy();  
+        //initializeBuddy();  
         payload_start blk = smalloc_helper_find_avalible(payload_size);
         return blk;        
     }
@@ -264,7 +264,7 @@ void sfree(payload_start p)
         size_t region = size + _size_meta_data();
         --num_allocated_blocks;
         num_allocated_bytes -= size;
-        
+
         munmap(static_cast<void*>(meta_data), region);
         return;
     }
