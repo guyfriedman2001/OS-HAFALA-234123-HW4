@@ -116,7 +116,7 @@ inline MallocMetadata *getNextMallocBlock(MallocMetadata *current_block);
 inline MallocMetadata *getTailAtOrder(size_t order);
 inline payload_start getStructsPayload(MallocMetadata *malloc_of_block);
 inline void _placeBlockInFreeList(MallocMetadata *malloc_manager_of_block);
-inline MallocMetadata *_firstBlockAfter(MallocMetadata *malloc_manager_of_block);
+//inline MallocMetadata *_firstBlockAfter(MallocMetadata *malloc_manager_of_block);
 inline void _init_dummy_MetaData(MallocMetadata* initialise_this);
 inline size_t getOrderOfSize(payload_size_t size);
 inline MallocMetadata *getHeadOfSize(payload_size_t payload_size);
@@ -225,7 +225,7 @@ void sfree(payload_start p)
 
     if (meta_data->is_mmap)
     {
-        size_t size = meta_data->payload_size;      
+        size_t size = getBlockSize(p);      
         size_t region = size + _size_meta_data();
         --num_allocated_blocks;
         num_allocated_bytes -= size;
@@ -233,7 +233,7 @@ void sfree(payload_start p)
         munmap(static_cast<void*>(meta_data), region);
         return;
     }
-    if (meta_data->is_free)
+    if (isFree(p))
         return;
     markFree(p);          
     merge(meta_data);         
@@ -264,21 +264,23 @@ payload_start srealloc(payload_start oldp, payload_size_t payload_size)
 
     MallocMetadata* meta = getMallocStruct(oldp);
 
-    if (static_cast<size_t>(meta->payload_size) >= static_cast<size_t>(payload_size))
+    if (static_cast<size_t>(getBlockSize(oldp)) >= static_cast<size_t>(payload_size))
         return oldp;
 
     if (meta->is_mmap)
     {
         payload_start fresh = smalloc(payload_size);
-        if (!fresh) return nullptr;
-        memmove(fresh, oldp, meta->payload_size);
+        if (!fresh)
+            return nullptr;
+        memmove(fresh, oldp, getBlockSize(oldp));
         sfree(oldp);
         return fresh;
     }
 
     payload_start fresh = smalloc(payload_size);
-    if (!fresh) return nullptr;
-    memmove(fresh, oldp, meta->payload_size);
+    if (!fresh)
+        return nullptr;
+    memmove(fresh, oldp, getBlockSize(oldp));
     sfree(oldp);
     return fresh;
 }
@@ -322,7 +324,7 @@ payload_size_t _num_free_bytes()
         MallocMetadata *global_tail = getTailAtOrder(j);
         for (MallocMetadata *temp = getNextMallocBlock(global_head); temp != global_tail; temp = getNextMallocBlock(temp))
         {
-            free_bytes = (((size_t)free_bytes) + ((size_t)temp->payload_size)); // free_bytes += temp->payload_size;
+            free_bytes = (((size_t)free_bytes) + ((size_t)temp->payload_size));
         }
     }
 
@@ -387,17 +389,15 @@ payload_start smalloc_helper_find_avalible(payload_size_t payload_size)
     initializeList();
     size_t order_needed = getOrderOfSize(payload_size);
 
-    for (size_t o = order_needed; o <= MAX_ORDER; ++o)
+    for (size_t order = order_needed; order <= MAX_ORDER; ++order)
     {
-        MallocMetadata* head = getHeadAtOrder(o);
-        if (head->next == getTailAtOrder(o))         
+        MallocMetadata* head = getHeadAtOrder(order);
+        if (head->next == getTailAtOrder(order))         
             continue;
 
         MallocMetadata* blk = head->next;
         removeFromList(blk);                           
-        blk = splitBlock(blk, order_needed);
-        //++num_allocated_blocks; 
-        //num_allocated_bytes += payload_size;          
+        blk = splitBlock(blk, order_needed);      
         return getStructsPayload(blk);                 
     }
     return nullptr;   
@@ -472,23 +472,26 @@ inline void _init_dummy_MetaData(MallocMetadata* initialise_this){
 inline void initializeBuddy()
 {
     assert(is_list_initialized && "function \"initializeBuddy\" was called before function \"initializeList\"! now allignment checking won't work!");
-    if (is_buddy_initialized){return;}
+    if (is_buddy_initialized)
+        return;
     void* current_brk = sbrk(0);
-    if (SYSCALL_FAILED(current_brk)) return;
+    if (SYSCALL_FAILED(current_brk))
+        return;
 
     uintptr_t address   = (uintptr_t)current_brk;
     uintptr_t aligned = (address + POOL_SIZE - 1) & ~(POOL_SIZE - 1); // aligment
+    
     if (aligned != address && SYSCALL_FAILED(sbrk(aligned - address)))
         return;
 
     void* region = sbrk(POOL_SIZE);
-    if (SYSCALL_FAILED(region)) return;
+    if (SYSCALL_FAILED(region))
+        return;
 
     uint8_t* p = static_cast<uint8_t*>(region);
     for (size_t i = 0; i < BLOCKS_IN_POOL; ++i, p += BLOCK_SIZE_BYTES)
-    {
         initFreeBlock((actual_block_start)p, BLOCK_SIZE_BYTES, false, MAX_ORDER);
-    }
+
     is_buddy_initialized = true;
 }
 
@@ -498,10 +501,11 @@ inline void markAllocated(payload_start block)
     //  IMPORTANT: regards pointers in doubly linked list as valid data (no null and no garbage)
 
     MallocMetadata* meta_data = getMallocStruct(block);
-    if (!meta_data->is_free) return;                 
+    if (isAllocated(block))
+        return;                 
     meta_data->is_free = false;
-
-    if (!meta_data->is_mmap) removeFromList(meta_data);
+    if (!meta_data->is_mmap)
+        removeFromList(meta_data);
 }
 
 inline void markFree(payload_start block)
@@ -575,7 +579,6 @@ inline MallocMetadata *getNextMallocBlock(MallocMetadata *current_block)
     {
         return nullptr;
     }
-    // assert(current_block != nullptr);
     return current_block->next;
 }
 
@@ -591,31 +594,34 @@ inline payload_start getStructsPayload(MallocMetadata *malloc_of_block)
     return tmp_payload_start;
 }
 
+// inserts a free block into the appropriate free list based on its order in sorted address order
 inline void _placeBlockInFreeList(MallocMetadata *malloc_manager_of_block)
 {
-
     assert(malloc_manager_of_block && malloc_manager_of_block->is_free);
-    size_t order = malloc_manager_of_block->order;
 
+    size_t order = malloc_manager_of_block->order;
     MallocMetadata* head = getHeadAtOrder(order);
     MallocMetadata* tail = getTailAtOrder(order);
 
     MallocMetadata* curr = head->next;
+
+    // find insertion point, first block with a higher address
     while (curr != tail && curr < malloc_manager_of_block) {
         MallocMetadata* next = curr->next;
-        if (next == nullptr) {      
+        if (next == nullptr) {
             break;
         }
         curr = next;
     }
+
     malloc_manager_of_block->next = curr;
     malloc_manager_of_block->prev = curr->prev;
-
     curr->prev->next = malloc_manager_of_block;
     curr->prev = malloc_manager_of_block;
 }
 
-inline MallocMetadata *_firstBlockAfter(MallocMetadata *malloc_manager_of_block)
+
+/*inline MallocMetadata *_firstBlockAfter(MallocMetadata *malloc_manager_of_block)
 {
     assert((malloc_manager_of_block != nullptr) && "in function '_firstBlockAfter': recieved nullptr as \"(MallocMetadata *malloc_manager_of_block\" argument.");
 
@@ -631,7 +637,7 @@ inline MallocMetadata *_firstBlockAfter(MallocMetadata *malloc_manager_of_block)
             return current;
     }
     return tail;  
-}
+}*/
 
 inline size_t getOrderOfSize(payload_size_t size){
     size_t needed = size + sizeof(MallocMetadata);   
@@ -674,6 +680,7 @@ inline void insertToFreeList(MallocMetadata* blk)
     _placeBlockInFreeList(blk);     
 }
 
+// recursively splits a large free block into smaller buddies until the target order is reached
 inline MallocMetadata* splitBlock(MallocMetadata* big, size_t target_order)
 {
     while (big->order > target_order)
@@ -681,17 +688,22 @@ inline MallocMetadata* splitBlock(MallocMetadata* big, size_t target_order)
         const size_t new_order  = big->order - 1;
         const size_t half_bytes = orderToSize(new_order);
 
-        uint8_t* big_start = (uint8_t*)big;      
+        // compute buddy address by advancing half the block size
+        uint8_t* big_start = (uint8_t*)big;
         MallocMetadata* buddy = (MallocMetadata*)(big_start + half_bytes);
 
+        // update both halves to new order and sizes
         big->order = new_order;
         big->payload_size = half_bytes - BLOCK_BUFFER_SIZE;
+
         buddy->order = new_order;
         buddy->payload_size = half_bytes - BLOCK_BUFFER_SIZE;
         buddy->is_free = true;
         buddy->is_mmap = false;
         buddy->next = buddy->prev = nullptr;
+
         insertToFreeList(buddy);
+
         ++num_allocated_blocks;
         num_allocated_bytes -= _size_meta_data();
     }
@@ -700,29 +712,49 @@ inline MallocMetadata* splitBlock(MallocMetadata* big, size_t target_order)
     return big;
 }
 
+
+// attempts to merge the given free block with its buddy recursively
+// returns a pointer to the resulting merged block
 inline MallocMetadata* merge(MallocMetadata* block)
 {
+    // remove from free list if it's already linked
     if (block && block->prev && block->next)
         removeFromList(block); 
+
+    // try merging upwards as long as possible
     while (block->order < MAX_ORDER)
     {
         void* buddy_addr = getBuddyAddress(block, block->order);
         auto* buddy = (MallocMetadata*)buddy_addr;
-        if ((uintptr_t)buddy % orderToSize(block->order) != 0 || !buddy->is_free || buddy->order != block->order || buddy->prev == nullptr || buddy->next == nullptr)
+
+        // check if buddy is valid and can merge it
+        if ((uintptr_t)buddy % orderToSize(block->order) != 0 || 
+            !buddy->is_free || 
+            buddy->order != block->order || 
+            buddy->prev == nullptr || 
+            buddy->next == nullptr)
             break;
-        removeFromList(buddy);   
+
+        // remove buddy from free list
+        removeFromList(buddy);
+
+        // ensure merged block starts at the lower address
         if (buddy < block)
             block = buddy;
+
         block->order += 1;
         block->payload_size = orderToSize(block->order) - _size_meta_data();
+
         --num_allocated_blocks;
-        num_allocated_bytes += _size_meta_data();                
+        num_allocated_bytes += _size_meta_data();
     }
+
     insertToFreeList(block);               
     return block;
 }
 
 
+// converts an order index to the corresponding block size in bytes
 inline size_t orderToSize(size_t order)
 {
        return (size_t)128 << order; 
