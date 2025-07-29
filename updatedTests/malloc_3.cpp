@@ -193,9 +193,7 @@ c. If sbrk fails in allocating the needed space, return NULL.
     initializeBuddy(); 
     if (!isSizeValid(payload_size)) return nullptr;
 
-
     if (payload_size + _size_meta_data() < BLOCK_SIZE_BYTES) {
-        //initializeBuddy();  
         payload_start blk = smalloc_helper_find_avalible(payload_size);
         return blk;        
     }

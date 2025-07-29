@@ -157,37 +157,14 @@ payload_start smalloc(payload_size_t payload_size)
     /*
     ● Searches for a free block with at least ‘size’ bytes or allocates (sbrk()) one if none are
     found.
-● Return value:
-i. Success – returns pointer to the first byte in the allocated block (excluding the meta-data of
-course)
-ii. Failure –
-a. If size is 0 returns NULL.
-b. If ‘size’ is more than 10**8, return NULL.
-c. If sbrk fails in allocating the needed space, return NULL.
+    ● Return value:
+    i. Success – returns pointer to the first byte in the allocated block (excluding the meta-data of
+    course)
+    ii. Failure –
+        a. If size is 0 returns NULL.
+        b. If ‘size’ is more than 10**8, return NULL.
+        c. If sbrk fails in allocating the needed space, return NULL.
     */
-    /*if (!isSizeValid(payload_size))
-    {
-        return nullptr;
-    }
-    initializeList();
-    payload_start look_for_avalible = smalloc_helper_find_avalible(payload_size);
-
-    if (look_for_avalible != nullptr)
-    {
-        markAllocated(look_for_avalible);
-        return look_for_avalible;
-    }
-
-    actual_size_t temp_size = (actual_size_t)payload_size + BLOCK_BUFFER_SIZE;
-    actual_block_start temp = smalloc_helper_break_existing(temp_size);
-    if (temp == nullptr)
-    { // allocation might have failed
-        return nullptr;
-    }
-    payload_start new_allocation = initAllocatedBlock(temp, temp_size);
-    num_allocated_blocks++;
-    num_allocated_bytes = (((size_t)num_allocated_bytes) + ((size_t)payload_size)); // num_allocated_bytes += payload_size;
-    return new_allocation;*/
 
     initializeList();
     initializeBuddy(); 
@@ -225,15 +202,6 @@ payload_start scalloc(size_t num, size_t size)
     b. If ‘size * num’ is more than 10**8, return NULL.
     c. If sbrk fails in allocating the needed space, return NULL.
     */
-    /*payload_size_t actual_payload_size = num * size;
-    payload_start allocated_block = smalloc(actual_payload_size);
-    if (allocated_block == nullptr)
-    {
-        return nullptr;
-    }
-
-    memset(allocated_block, 0, actual_payload_size);
-    return allocated_block;*/
 
     payload_size_t need = num * size;
     payload_start blk   = smalloc(need);
@@ -250,7 +218,6 @@ void sfree(payload_start p)
     ● If ‘p’ is NULL or already released, simply returns.
     ● Presume that all pointers ‘p’ truly points to the beginning of an allocated block.
     */
-    //markFree(p); // <- markFree also handles metadata operations.
 
     if (!p) return;
 
@@ -288,38 +255,6 @@ payload_start srealloc(payload_start oldp, payload_size_t payload_size)
         c. If sbrk fails in allocating the needed space, return NULL.
         d. Do not free ‘oldp’ if srealloc() fails.
     */
-    /*if (!isSizeValid(payload_size))
-    {
-        return nullptr;
-    }
-    if (oldp == nullptr)
-    {
-#if 0
-        payload_start temp = smalloc(payload_size);
-        if (temp != nullptr)
-        {
-            num_allocated_blocks++;
-            num_allocated_bytes = (((size_t)num_allocated_bytes) + ((size_t)payload_size)); // num_allocated_bytes += payload_size;
-        }
-        return temp;
-#else
-        return smalloc(payload_size);
-#endif
-    }
-    MallocMetadata *oldp_metadata = getMallocStruct(oldp);
-    payload_size_t oldp_size = oldp_metadata->payload_size;
-    if (((size_t)oldp_size) >= ((size_t)payload_size))
-    {
-        return oldp;
-    }
-    payload_start new_block = smalloc(payload_size);
-    if (new_block == nullptr)
-    {
-        return nullptr;
-    }
-    memmove(new_block, oldp, oldp_size);
-    sfree(oldp);
-    return new_block;*/
 
     if (!isSizeValid(payload_size))
         return nullptr;
@@ -353,9 +288,10 @@ size_t _num_free_blocks()
     /*
     ● Returns the number of allocated blocks in the heap that are currently free.
     */
+
+
     initializeList();
     size_t free_blocks = 0;
-
     for (size_t j = 0; j < NUM_ORDERS; ++j)
     { // iterate over all possible orders.
         MallocMetadata *global_head = getHeadAtOrder(j);
@@ -447,19 +383,6 @@ payload_start smalloc_helper_find_avalible(payload_size_t payload_size)
 {
     // finds first avalible block with capacity that is at least what is requested (no fancy math)
     // only return the pointer to the payload, not the struct itself.
-    /*initializeList();
-    MallocMetadata *global_head = getHeadOfSize(payload_size);
-    MallocMetadata *global_tail = getTailOfSize(payload_size);
-    MallocMetadata *temp;
-    for (temp = getNextMallocBlock(global_head); temp != global_tail; temp = getNextMallocBlock(temp))
-    {
-        if (((size_t)temp->payload_size) >= ((size_t)payload_size))
-        {
-            payload_start fitting_block = getStructsPayload(temp);
-            return fitting_block;
-        }
-    }
-    return nullptr;*/
 
     initializeList();
     size_t order_needed = getOrderOfSize(payload_size);
@@ -482,26 +405,6 @@ payload_start smalloc_helper_find_avalible(payload_size_t payload_size)
 
 actual_block_start smalloc_helper_break_existing(actual_size_t actual_block_size)
 { // literally copy paste of the previous part.
-    /*if (((size_t)actual_block_size) <= 0 || ((size_t)actual_block_size) > ESER_BECHEZKAT_SHMONE)
-    {
-        return nullptr;
-    }*/
-
-    /*void *meta_block_start = sbrk(0);
-
-    if (SYSCALL_FAILED(meta_block_start))
-    {
-        return nullptr;
-    }
-
-    void *one_after_meta_block_end = sbrk(actual_block_size);
-
-    if (SYSCALL_FAILED(one_after_meta_block_end))
-    {
-        return nullptr;
-    }
-
-    return (actual_block_start)meta_block_start;*/
 
     void* region = mmap(nullptr, actual_block_size, PROT_READ | PROT_WRITE,
                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -550,9 +453,6 @@ inline void initializeList()
 
     // now after everything is initialised, update the flag.
     is_list_initialized = true;
-
-    // now after the global variables are initialised, initialise all mem alloc (now it can be made in allignment)
-    //initializeBuddy();
 }
 
 inline void _init_dummy_MetaData(MallocMetadata* initialise_this){
@@ -596,23 +496,6 @@ inline void markAllocated(payload_start block)
 {
     // mark bool as allocated, remove from doubly linked list,
     //  IMPORTANT: regards pointers in doubly linked list as valid data (no null and no garbage)
-    /*initializeList();
-    MallocMetadata *blocks_metadata_manager = getMallocStruct(block);
-
-    assert(blocks_metadata_manager->next != nullptr); // <- cannot verify garbage though.
-    assert(blocks_metadata_manager->prev != nullptr);
-    assert(blocks_metadata_manager->is_free); // <- might be redundant
-
-    // update flag
-    blocks_metadata_manager->is_free = false;
-
-    // remove from doubly linked list
-    blocks_metadata_manager->prev->next = blocks_metadata_manager->next;
-    blocks_metadata_manager->next->prev = blocks_metadata_manager->prev;
-
-    // truncate pointers to prevent undefined/ unexpected behaviour
-    blocks_metadata_manager->next = nullptr;
-    blocks_metadata_manager->prev = nullptr;*/
 
     MallocMetadata* meta_data = getMallocStruct(block);
     if (!meta_data->is_free) return;                 
@@ -623,23 +506,6 @@ inline void markAllocated(payload_start block)
 
 inline void markFree(payload_start block)
 {
-    
-    /*initializeList();
-    if (block == nullptr)
-    {
-        return;
-    } // make it safe for freeing nullptr.
-    // mark bool as free, add to doubly linked list, regard previous pointers in the block meta data as garbage.
-    //  IMPORTANT: NO DOUBLE FREE CALLS!
-    MallocMetadata *blocks_metadata_manager = getMallocStruct(block);
-
-    assert(isAllocated(block)); // <- NO DOUBLE FREE! thats why _initBlock_MetaData needs to initialise MallocMetadata->is_free = false.
-
-    // mark free
-    blocks_metadata_manager->is_free = true;
-
-    _placeBlockInFreeList(blocks_metadata_manager); // <- expects a free marked block!*/
-
     if (!block) return;
     MallocMetadata* meta_data = getMallocStruct(block);
     if (meta_data->is_mmap) {                      
@@ -727,26 +593,6 @@ inline payload_start getStructsPayload(MallocMetadata *malloc_of_block)
 
 inline void _placeBlockInFreeList(MallocMetadata *malloc_manager_of_block)
 {
-    /*assert((malloc_manager_of_block != nullptr) && "in function '_placeBlockInFreeList': recieved nullptr as \"(MallocMetadata *malloc_manager_of_block\" argument.");
-
-    // add to doubly linked list, regard previous pointers in the block meta data as garbage.
-    // MallocMetadata *global_head = getHeadAtOrder(int order);
-    // MallocMetadata *blocks_metadata_manager = getMallocStruct(malloc_manager_of_block);
-
-    // make sure block was marked as free
-    assert(malloc_manager_of_block->is_free && "in function '_placeBlockInFreeList': block was not marked as free before insertion attempt into the free linked list.");
-
-    // find the block that would be after the current block in the free linked list
-    MallocMetadata *firstBlockAfter = _firstBlockAfter(malloc_manager_of_block);
-    assert((firstBlockAfter != nullptr) && "in function '_placeBlockInFreeList': block after was returned as nullptr.");
-
-    // adjust new blocks pointers
-    malloc_manager_of_block->next = firstBlockAfter;
-    malloc_manager_of_block->prev = firstBlockAfter->prev;
-
-    // truncate (update) old pointers
-    firstBlockAfter->prev = malloc_manager_of_block;
-    malloc_manager_of_block->prev->next = malloc_manager_of_block;*/
 
     assert(malloc_manager_of_block && malloc_manager_of_block->is_free);
     size_t order = malloc_manager_of_block->order;
@@ -776,30 +622,15 @@ inline MallocMetadata *_firstBlockAfter(MallocMetadata *malloc_manager_of_block)
     size_t order = malloc_manager_of_block->order;
     MallocMetadata *head = getHeadAtOrder(order);
     MallocMetadata *tail = getTailAtOrder(order);
-    //MallocMetadata *temp;
-
-    // find the first block (after head and before tail) with a higher addres than current adress, if there isnt then return tail.
-    /*for (temp = getNextMallocBlock(global_head); temp != global_tail; temp = getNextMallocBlock(temp))
-    {
-        if (malloc_manager_of_block <= temp)
-        { // we are comparing the addreses themselves! not the value of the pointers!
-            break;
-        }
-    }*/
 
     for (MallocMetadata* current = getNextMallocBlock(head);
          current != tail;
          current = getNextMallocBlock(current))
     {
-        if (malloc_manager_of_block <= current)          // השוואה על-פי כתובת
+        if (malloc_manager_of_block <= current)         
             return current;
     }
     return tail;  
-
-    /*assert((temp != nullptr) && "in function '_firstBlockAfter': temp was resolved to nullptr, see code for comment on what to do.");
-    // if the assert failed: need to add a break condition in the for loop or a condition after the loop to make a nullptr return tail.
-
-    return temp;*/
 }
 
 inline size_t getOrderOfSize(payload_size_t size){
