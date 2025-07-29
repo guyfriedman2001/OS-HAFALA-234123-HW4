@@ -127,6 +127,7 @@ inline MallocMetadata* splitBlock(MallocMetadata* blk, size_t target_order);
 inline MallocMetadata* merge(MallocMetadata* blk);
 inline void* getBuddyAddress(void* block, size_t order);
 inline size_t orderToSize(size_t order);
+inline payload_start moveAndReplace(payload_start oldp, payload_size_t payload_size);
 
 
 
@@ -269,20 +270,9 @@ payload_start srealloc(payload_start oldp, payload_size_t payload_size)
 
     if (meta->is_mmap)
     {
-        payload_start fresh = smalloc(payload_size);
-        if (!fresh)
-            return nullptr;
-        memmove(fresh, oldp, getBlockSize(oldp));
-        sfree(oldp);
-        return fresh;
+        return moveAndReplace(oldp, payload_size);
     }
-
-    payload_start fresh = smalloc(payload_size);
-    if (!fresh)
-        return nullptr;
-    memmove(fresh, oldp, getBlockSize(oldp));
-    sfree(oldp);
-    return fresh;
+    return moveAndReplace(oldp, payload_size);
 }
 
 size_t _num_free_blocks()
@@ -480,7 +470,7 @@ inline void initializeBuddy()
 
     uintptr_t address   = (uintptr_t)current_brk;
     uintptr_t aligned = (address + POOL_SIZE - 1) & ~(POOL_SIZE - 1); // aligment
-    
+
     if (aligned != address && SYSCALL_FAILED(sbrk(aligned - address)))
         return;
 
@@ -758,4 +748,13 @@ inline MallocMetadata* merge(MallocMetadata* block)
 inline size_t orderToSize(size_t order)
 {
        return (size_t)128 << order; 
+}
+
+inline payload_start moveAndReplace(payload_start oldp, payload_size_t payload_size)
+{
+    payload_start fresh = smalloc(payload_size);
+    if (!fresh) return nullptr;
+    memmove(fresh, oldp, getBlockSize(oldp));
+    sfree(oldp);
+    return fresh;
 }
