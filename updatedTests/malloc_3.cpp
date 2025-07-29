@@ -260,14 +260,16 @@ void sfree(payload_start p)
 
     if (meta_data->is_mmap)
     {
-        munmap(static_cast<void*>(meta_data), static_cast<size_t>(meta_data->payload_size) + _size_meta_data());
+        size_t size = meta_data->payload_size;      
+        size_t region = size + _size_meta_data();
         --num_allocated_blocks;
-        num_allocated_bytes -= meta_data->payload_size;
+        num_allocated_bytes -= size;
+        
+        munmap(static_cast<void*>(meta_data), region);
         return;
     }
     if (meta_data->is_free)
         return;
-
     markFree(p);          
     merge(meta_data);         
 }
@@ -552,7 +554,7 @@ inline void initializeList()
     is_list_initialized = true;
 
     // now after the global variables are initialised, initialise all mem alloc (now it can be made in allignment)
-    initializeBuddy();
+    //initializeBuddy();
 }
 
 inline void _init_dummy_MetaData(MallocMetadata* initialise_this){
